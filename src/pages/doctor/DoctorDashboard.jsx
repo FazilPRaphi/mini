@@ -3,6 +3,7 @@ import Profile from "./Profile";
 import AppointmentCreator from "./AppointmentCreator";
 import DoctorAppointments from "./DoctorAppointments";
 import DoctorConsultation from "./DoctorConsultation";
+import ChatList from "../../components/ChatList";
 import { supabase } from "../../supabaseClient";
 
 const DoctorDashboard = () => {
@@ -66,10 +67,9 @@ const DoctorDashboard = () => {
         setMenuOpen(false);
       }}
       className={`px-4 py-2 rounded-xl cursor-pointer transition-all duration-200 font-medium
-        ${
-          active === key
-            ? "bg-orange-500 text-white shadow-md scale-[1.02]"
-            : "text-gray-600 hover:bg-orange-50 hover:text-orange-600"
+        ${active === key
+          ? "bg-orange-500 text-white shadow-md scale-[1.02]"
+          : "text-gray-600 hover:bg-orange-50 hover:text-orange-600"
         }`}
     >
       {label}
@@ -93,6 +93,7 @@ const DoctorDashboard = () => {
           {menuItem("availability", "Availability (Create Slots)")}
           {menuItem("appointments", "Booked Patients")}
           {menuItem("prescriptions", "Consultations / Prescriptions")}
+          {menuItem("chats", "Chats")}
 
           <li className="pt-4">
             <button
@@ -122,6 +123,7 @@ const DoctorDashboard = () => {
           {active === "availability" && <AppointmentCreator />}
           {active === "appointments" && <DoctorAppointments />}
           {active === "prescriptions" && <DoctorConsultation />}
+          {active === "chats" && <ChatList />}
         </div>
       </div>
     </div>

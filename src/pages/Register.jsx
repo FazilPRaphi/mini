@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Mail, Lock, User } from "lucide-react";
 
 const Register = () => {
+  const navigate = useNavigate();
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("patient");
@@ -13,122 +17,213 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { role },
+        data: { role, full_name: name },
       },
     });
 
     if (error) {
       toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.session) {
+      toast.success("Account created successfully!");
+
+      const userRole = data.user.user_metadata.role;
+
+      if (userRole === "doctor") {
+        navigate("/doctor-dashboard");
+      } else {
+        navigate("/patient-dashboard");
+      }
     } else {
-      toast.success("Account created. Verify email before login.");
-      setEmail("");
-      setPassword("");
-      setRole("patient");
+      toast.error("Signup successful, but no active session found.");
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-lg grid md:grid-cols-2 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#e8f3f7] to-[#cfdde3] flex flex-col">
 
-        {/* LEFT PANEL */}
-        <div className="hidden md:flex flex-col justify-center px-10 bg-orange-50">
-          <h1 className="text-4xl font-bold mb-4">
-            Welcome to <span className="text-orange-500">HealthSync</span>
-          </h1>
-          <p className="text-gray-600 leading-relaxed">
-            Create your account to access a secure healthcare management platform designed
-            for patients and doctors to collaborate seamlessly.
-          </p>
+      {/* NAVBAR */}
+      <div className="flex justify-between items-center px-10 py-5 bg-white shadow-sm">
+        <Link to="/" className="flex items-center gap-2 font-bold text-lg">
+          <div className="w-7 h-7 bg-cyan-500 rounded-full"></div>
+          HealthSync
+        </Link>
+
+        <div className="flex items-center gap-4">
+          <span className="text-gray-500 text-sm">
+            Already have an account?
+          </span>
+
+          <Link
+            to="/login"
+            className="border border-cyan-500 text-cyan-600 px-5 py-2 rounded-lg"
+          >
+            Login
+          </Link>
         </div>
+      </div>
 
-        {/* RIGHT PANEL (FORM) */}
-        <div className="p-8 sm:p-12">
-          <h2 className="text-3xl font-bold mb-2">Create Account</h2>
-          <p className="text-gray-500 mb-8">
-            Join the healthcare management platform.
-          </p>
+      {/* MAIN CONTENT */}
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
 
-          <form onSubmit={handleRegister} className="space-y-6">
+        <div className="w-full max-w-6xl grid md:grid-cols-2 gap-10 items-center">
 
-            {/* EMAIL */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-400 outline-none"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+          {/* LEFT SIDE INFO */}
+          <div className="space-y-6">
+
+            <span className="bg-cyan-100 text-cyan-600 px-4 py-1 rounded-full text-xs font-medium">
+              TRUSTED BY 50K+ PATIENTS
+            </span>
+
+            <h1 className="text-5xl font-bold leading-tight">
+              Healthcare <span className="text-cyan-500">simplified</span> for you and your family.
+            </h1>
+
+            <p className="text-gray-600">
+              Join thousands of users who consult with top-certified doctors instantly.
+              Your health, our priority.
+            </p>
+
+            <div className="space-y-4 mt-6">
+
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
+                HD Video Consultations
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
+                Digital Prescriptions
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
+                24/7 Availability
+              </div>
+
             </div>
+          </div>
 
-            {/* PASSWORD */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-400 outline-none"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+          {/* RIGHT SIGNUP FORM */}
+          <div className="bg-white rounded-3xl shadow-lg p-10">
 
-            {/* ROLE SELECTOR */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Register As</label>
-              <div className="flex bg-gray-100 rounded-xl p-1">
+            <h2 className="text-2xl font-bold mb-2">
+              Create Your Account
+            </h2>
+
+            <p className="text-gray-500 mb-6">
+              Start your journey to better health today.
+            </p>
+
+            <form onSubmit={handleRegister} className="space-y-5">
+
+              {/* ROLE SELECTOR */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+
                 <button
                   type="button"
                   onClick={() => setRole("patient")}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    role === "patient"
-                      ? "bg-white shadow text-orange-500"
-                      : "text-gray-500"
-                  }`}
+                  className={`flex-1 py-2 rounded-lg ${role === "patient"
+                    ? "bg-cyan-500 text-white"
+                    : "text-gray-600"
+                    }`}
                 >
                   Patient
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setRole("doctor")}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    role === "doctor"
-                      ? "bg-white shadow text-orange-500"
-                      : "text-gray-500"
-                  }`}
+                  className={`flex-1 py-2 rounded-lg ${role === "doctor"
+                    ? "bg-cyan-500 text-white"
+                    : "text-gray-600"
+                    }`}
                 >
                   Doctor
                 </button>
+
               </div>
-            </div>
 
-            {/* SUBMIT */}
-            <button
-              disabled={loading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-medium transition disabled:opacity-60"
-            >
-              {loading ? "Creating Account..." : "Sign Up"}
-            </button>
-          </form>
+              {/* NAME */}
+              <div>
+                <label className="text-sm text-gray-600">Full Name</label>
 
-          {/* FOOTER */}
-          <p className="text-sm text-center mt-6 text-gray-600">
-            Already have an account?{" "}
-            <Link to="/login" className="text-orange-500 font-medium hover:underline">
-              Login
-            </Link>
-          </p>
+                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
+                  <User size={18} className="text-gray-400 mr-2" />
+
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    className="flex-1 outline-none"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* EMAIL */}
+              <div>
+                <label className="text-sm text-gray-600">Email Address</label>
+
+                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
+                  <Mail size={18} className="text-gray-400 mr-2" />
+
+                  <input
+                    type="email"
+                    placeholder="john@example.com"
+                    className="flex-1 outline-none"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* PASSWORD */}
+              <div>
+                <label className="text-sm text-gray-600">Password</label>
+
+                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
+                  <Lock size={18} className="text-gray-400 mr-2" />
+
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="flex-1 outline-none"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* BUTTON */}
+              <button
+                disabled={loading}
+                className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-medium shadow-md transition disabled:opacity-60"
+              >
+                {loading ? "Creating Account..." : "Create Account →"}
+              </button>
+
+            </form>
+
+          </div>
         </div>
+      </div>
+
+      {/* FOOTER */}
+      <div className="text-center text-xs text-gray-500 pb-6">
+        © 2025 HealthSync Health Systems. All rights reserved.
       </div>
     </div>
   );
