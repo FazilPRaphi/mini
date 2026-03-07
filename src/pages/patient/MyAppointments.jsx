@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
+import VideoCall from "../../components/Videocall";
 
 const MyAppointments = ({ statusFilter = "all" }) => {
 
@@ -8,22 +9,60 @@ const MyAppointments = ({ statusFilter = "all" }) => {
     const [loading, setLoading] = useState(true);
     const [cancelId, setCancelId] = useState(null);
 
+    const [callRoom, setCallRoom] = useState(null);
+    const [userName, setUserName] = useState("");
+
+    /* LOAD APPOINTMENTS ON PAGE LOAD */
+
     useEffect(() => {
         fetchAppointments();
     }, [statusFilter]);
+
+    /* REALTIME LISTENER */
+
+    useEffect(() => {
+
+        const channel = supabase
+            .channel("appointments-realtime")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "appointment_bookings"
+                },
+                () => {
+                    fetchAppointments();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+
+    }, []);
+
+    /* FETCH APPOINTMENTS */
 
     const fetchAppointments = async () => {
 
         setLoading(true);
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
             setLoading(false);
             return;
         }
+
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+
+        setUserName(profile?.full_name || "Patient");
 
         const { data, error } = await supabase
             .from("appointment_bookings")
@@ -31,6 +70,10 @@ const MyAppointments = ({ statusFilter = "all" }) => {
         id,
         status,
         booked_at,
+        call_room,
+        queue_position,
+        consultation_started,
+        consultation_completed,
         appointments (
           date,
           time,
@@ -61,7 +104,10 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
         setAppointments(filtered);
         setLoading(false);
+
     };
+
+    /* CANCEL BOOKING */
 
     const cancelBooking = async (bookingId) => {
 
@@ -69,9 +115,7 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             setCancelId(bookingId);
 
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
+            const { data: { user } } = await supabase.auth.getUser();
 
             const { data, error } = await supabase
                 .from("appointment_bookings")
@@ -92,8 +136,8 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             toast.success("Appointment cancelled");
 
-            setAppointments((prev) =>
-                prev.map((item) =>
+            setAppointments(prev =>
+                prev.map(item =>
                     item.id === bookingId
                         ? { ...item, status: "cancelled" }
                         : item
@@ -101,12 +145,12 @@ const MyAppointments = ({ statusFilter = "all" }) => {
             );
 
         } finally {
-
             setCancelId(null);
-
         }
 
     };
+
+    /* STATUS BADGE */
 
     const getStatusBadge = (status) => {
 
@@ -123,10 +167,53 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             default:
                 return "bg-gray-100 text-gray-700";
-
         }
 
     };
+
+    /* CALL TIME WINDOW */
+
+    const canJoinCall = (date, time) => {
+
+        const now = new Date();
+        const appointment = new Date(`${date}T${time}`);
+
+        const openTime = new Date(appointment.getTime() - 10 * 60000);
+        const closeTime = new Date(appointment.getTime() + 90 * 60000);
+
+        return now >= openTime && now <= closeTime;
+
+    };
+
+    /* VIDEO CALL SCREEN */
+
+    if (callRoom) {
+
+        return (
+
+            <div className="max-w-6xl mx-auto px-4 space-y-6">
+
+                <div className="flex justify-between items-center">
+
+                    <h1 className="text-2xl font-bold">
+                        Video Consultation
+                    </h1>
+
+                </div>
+
+                <VideoCall
+                    roomName={callRoom}
+                    userName={userName}
+                    onLeave={() => setCallRoom(null)}
+                />
+
+            </div>
+
+        );
+
+    }
+
+    /* MAIN PAGE */
 
     return (
 
@@ -142,24 +229,20 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                 </p>
             </div>
 
-
             {loading && (
 
                 <div className="grid md:grid-cols-2 gap-6">
 
                     {[...Array(3)].map((_, i) => (
-
                         <div
                             key={i}
                             className="bg-white p-6 rounded-2xl shadow animate-pulse h-40"
                         />
-
                     ))}
 
                 </div>
 
             )}
-
 
             {!loading && appointments.length === 0 && (
 
@@ -177,7 +260,6 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             )}
 
-
             {!loading && appointments.length > 0 && (
 
                 <div className="grid md:grid-cols-2 gap-6">
@@ -187,7 +269,9 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                         const slot = item.appointments;
                         const doctor = slot?.profiles;
 
-                        const appointmentDateTime = new Date(`${slot?.date}T${slot?.time}`);
+                        const appointmentDateTime =
+                            new Date(`${slot?.date}T${slot?.time}`);
+
                         const now = new Date();
 
                         const canCancel = appointmentDateTime > now;
@@ -218,15 +302,12 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                                     </div>
 
                                     <span
-                                        className={`px-3 py-1 text-xs rounded-full ${getStatusBadge(
-                                            item.status
-                                        )}`}
+                                        className={`px-3 py-1 text-xs rounded-full ${getStatusBadge(item.status)}`}
                                     >
                                         {item.status}
                                     </span>
 
                                 </div>
-
 
                                 <div className="mt-4 text-sm text-gray-700">
 
@@ -234,7 +315,6 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                                     <p>Time: {slot?.time}</p>
 
                                 </div>
-
 
                                 {item.status === "booked" && canCancel && (
 
@@ -251,6 +331,28 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                                     </button>
 
                                 )}
+
+                                {item.status === "booked" && !item.consultation_started && (
+
+                                    <p className="text-sm text-yellow-600 mt-2">
+                                        Queue position: {item.queue_position || "-"}. Waiting for doctor...
+                                    </p>
+
+                                )}
+
+                                {item.status === "booked" &&
+                                    item.consultation_started &&
+                                    !item.consultation_completed &&
+                                    canJoinCall(slot?.date, slot?.time) && (
+
+                                        <button
+                                            onClick={() => setCallRoom(item.call_room || `consult-${item.id}`)}
+                                            className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                                        >
+                                            Join Video Consultation
+                                        </button>
+
+                                    )}
 
                             </div>
 

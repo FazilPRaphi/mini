@@ -16,6 +16,7 @@ const Profile = ({ defaultEditing = false }) => {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(defaultEditing);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [lastLogin] = useState(new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }));
 
   useEffect(() => {
@@ -92,14 +93,6 @@ const Profile = ({ defaultEditing = false }) => {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1A202C", margin: "0 0 4px" }}>Doctor Profile</h1>
           <p style={{ color: "#718096", fontSize: 14, margin: 0 }}>Manage your professional information and account security.</p>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <IconBtn title="Notifications">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#718096"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
-          </IconBtn>
-          <IconBtn title="Settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#718096"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" /></svg>
-          </IconBtn>
         </div>
       </div>
 
@@ -199,37 +192,54 @@ const Profile = ({ defaultEditing = false }) => {
         </div>
 
         {/* Account Settings Section */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#0BC5EA"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1A202C", margin: 0 }}>Account Settings</h2>
-        </div>
-        <div style={{ ...card, marginBottom: 20 }}>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#4A5568", display: "block", marginBottom: 8 }}>Email Address</label>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#F7FAFC", borderRadius: 10, border: "1px solid #E2E8F0" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#A0AEC0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" /></svg>
-              <span style={{ fontSize: 14, color: "#4A5568" }}>{email}</span>
-            </div>
-            <p style={{ fontSize: 12, color: "#A0AEC0", marginTop: 6 }}>Email cannot be changed from this panel.</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#0BC5EA"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1A202C", margin: 0 }}>Account Settings</h2>
           </div>
+          <button
+            onClick={() => setShowAccountSettings(o => !o)}
+            style={{
+              fontSize: 13, fontWeight: 600, padding: "8px 18px",
+              borderRadius: 10, border: "1px solid #E2E8F0",
+              background: showAccountSettings ? "#EBF8FF" : "#fff",
+              color: showAccountSettings ? "#0BC5EA" : "#4A5568",
+              cursor: "pointer",
+            }}
+          >
+            {showAccountSettings ? "Hide" : "Change Password"}
+          </button>
+        </div>
 
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#4A5568", display: "block", marginBottom: 8 }}>New Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              style={{ ...inputStyle, marginBottom: 12 }}
-            />
-            <button onClick={updatePassword} style={{
-              background: "#1A202C", color: "#fff", border: "none",
-              borderRadius: 10, padding: "11px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer",
-            }}>
-              Update Password
-            </button>
+        {showAccountSettings && (
+          <div style={{ ...card, marginBottom: 20 }}>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#4A5568", display: "block", marginBottom: 8 }}>Email Address</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#F7FAFC", borderRadius: 10, border: "1px solid #E2E8F0" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#A0AEC0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" /></svg>
+                <span style={{ fontSize: 14, color: "#4A5568" }}>{email}</span>
+              </div>
+              <p style={{ fontSize: 12, color: "#A0AEC0", marginTop: 6 }}>Email cannot be changed from this panel.</p>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#4A5568", display: "block", marginBottom: 8 }}>New Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 12 }}
+              />
+              <button onClick={updatePassword} style={{
+                background: "#1A202C", color: "#fff", border: "none",
+                borderRadius: 10, padding: "11px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer",
+              }}>
+                Update Password
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>

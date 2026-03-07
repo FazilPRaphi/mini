@@ -25,6 +25,7 @@ const PatientProfile = ({ defaultEditing = false }) => {
   const [isEditing, setIsEditing] = useState(defaultEditing);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -341,36 +342,47 @@ const PatientProfile = ({ defaultEditing = false }) => {
       {/* ACCOUNT SETTINGS — only shown in view mode */}
       {!isEditing && (
         <>
-          <div className="bg-white rounded-2xl p-8 shadow grid md:grid-cols-2 gap-10">
-
-            {/* EMAIL */}
-            <div>
-              <h3 className="font-semibold mb-4">Account Settings</h3>
-              <label className="text-sm text-gray-500">Registered Email Address</label>
-              <div className="bg-gray-100 px-4 py-3 rounded-lg mt-2">{email}</div>
-              <p className="text-xs text-gray-400 mt-2">
-                Contact admin to change your primary email.
-              </p>
-            </div>
-
-            {/* PASSWORD */}
-            <div className="space-y-4">
-              <label className="text-sm text-gray-500">Update Password</label>
-              <input
-                type="password"
-                placeholder="Enter new password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border rounded-lg px-4 py-2 w-full"
-              />
+          <div className="bg-white rounded-2xl p-8 shadow">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800">Account Settings</h3>
               <button
-                onClick={changePassword}
-                className="bg-black text-white w-full py-2 rounded-lg"
+                onClick={() => setShowAccountSettings(o => !o)}
+                className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
               >
-                Update Password
+                {showAccountSettings ? "Hide" : "Change Password"}
               </button>
             </div>
 
+            {showAccountSettings && (
+              <div className="mt-6 grid md:grid-cols-2 gap-10">
+                {/* EMAIL */}
+                <div>
+                  <label className="text-sm text-gray-500">Registered Email Address</label>
+                  <div className="bg-gray-100 px-4 py-3 rounded-lg mt-2">{email}</div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Contact admin to change your primary email.
+                  </p>
+                </div>
+
+                {/* PASSWORD */}
+                <div className="space-y-4">
+                  <label className="text-sm text-gray-500">Update Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter new password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="border rounded-lg px-4 py-2 w-full"
+                  />
+                  <button
+                    onClick={changePassword}
+                    className="bg-black text-white w-full py-2 rounded-lg"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* BOTTOM CARDS */}

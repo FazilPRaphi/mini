@@ -4,6 +4,8 @@ import AppointmentCreator from "./AppointmentCreator";
 import DoctorAppointments from "./DoctorAppointments";
 import DoctorConsultation from "./DoctorConsultation";
 import ChatList from "../../components/ChatList";
+import DoctorComplaints from "./DoctorComplaints";
+import NotificationBell from "../../components/NotificationBell";
 import { supabase } from "../../supabaseClient";
 
 /* ── Icon components defined FIRST to avoid temporal dead zone ── */
@@ -40,6 +42,11 @@ const PersonIcon = ({ active }) => (
     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
   </svg>
 );
+const ComplaintIcon = ({ active }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+  </svg>
+);
 
 /* ── NAV defined AFTER all icon components ── */
 const NAV = [
@@ -48,6 +55,7 @@ const NAV = [
   { key: "prescriptions", label: "Consultations", icon: ConsultIcon },
   { key: "availability", label: "Availability", icon: CalIcon },
   { key: "chats", label: "Chats", icon: ChatIcon },
+  { key: "complaints", label: "Complaints", icon: ComplaintIcon },
   { key: "profile", label: "Profile", icon: PersonIcon },
 ];
 
@@ -93,21 +101,24 @@ const DoctorDashboard = () => {
       }}>
         {/* Logo */}
         <div style={{ padding: "24px 20px 16px", borderBottom: "1px solid #EDF2F7" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, background: "linear-gradient(135deg,#0BC5EA,#00B5D8)",
-              borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
-                <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
-                <circle cx="12" cy="12" r="2" fill="#fff" />
-              </svg>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, background: "linear-gradient(135deg,#0BC5EA,#00B5D8)",
+                borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
+                  <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="2" fill="#fff" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#1A202C", lineHeight: 1 }}>HealthSync</div>
+                <div style={{ fontSize: 10, color: "#0BC5EA", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>Clinic Management</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "#1A202C", lineHeight: 1 }}>HealthSync</div>
-              <div style={{ fontSize: 10, color: "#0BC5EA", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>Clinic Management</div>
-            </div>
+            <NotificationBell />
           </div>
         </div>
 
@@ -177,6 +188,7 @@ const DoctorDashboard = () => {
         {active === "appointments" && <DoctorAppointments />}
         {active === "prescriptions" && <DoctorConsultation />}
         {active === "chats" && <ChatList />}
+        {active === "complaints" && <DoctorComplaints />}
       </main>
     </div>
   );

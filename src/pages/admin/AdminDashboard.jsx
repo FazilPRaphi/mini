@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, LogOut, CheckCircle } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, CheckCircle, BarChart as BarChartIcon, PieChart as PieChartIcon, MessageSquare } from "lucide-react";
 
 import DocRegisterer from "./DocRegisterer";
 import UserDirectory from "./UserDirectory";
+import AdminDoctorAnalytics from "./AdminDoctorAnalytics";
+import AdminPatientAnalytics from "./AdminPatientAnalytics";
+import AdminComplaints from "./AdminComplaints";
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -66,6 +69,32 @@ const AdminDashboard = () => {
                         <CheckCircle size={20} />
                         Doc Registrations
                     </button>
+                    <button
+                        onClick={() => setActiveTab("docAnalytics")}
+                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-medium transition-all ${activeTab === "docAnalytics" ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "text-gray-400 hover:text-white hover:bg-gray-800"
+                            }`}
+                    >
+                        <BarChartIcon size={20} />
+                        Doctor Analytics
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("patAnalytics")}
+                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-medium transition-all ${activeTab === "patAnalytics" ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "text-gray-400 hover:text-white hover:bg-gray-800"
+                            }`}
+                    >
+                        <PieChartIcon size={20} />
+                        Patient Analytics
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("complaints")}
+                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-medium transition-all ${activeTab === "complaints" ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "text-gray-400 hover:text-white hover:bg-gray-800"
+                            }`}
+                    >
+                        <MessageSquare size={20} />
+                        Complaints
+                    </button>
                 </div>
 
                 <div className="p-6">
@@ -81,8 +110,12 @@ const AdminDashboard = () => {
 
             {/* MAIN CONTENT SPACE */}
             <div className="flex-1 p-12 overflow-y-auto">
-                <div className="max-w-6xl mx-auto">
-                    {activeTab === "directory" ? <UserDirectory /> : <DocRegisterer />}
+                <div className="max-w-6xl mx-auto mb-10">
+                    {activeTab === "directory" && <UserDirectory />}
+                    {activeTab === "registrations" && <DocRegisterer />}
+                    {activeTab === "docAnalytics" && <AdminDoctorAnalytics />}
+                    {activeTab === "patAnalytics" && <AdminPatientAnalytics />}
+                    {activeTab === "complaints" && <AdminComplaints />}
                 </div>
             </div>
         </div>

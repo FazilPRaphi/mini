@@ -6,6 +6,9 @@ import Appointments from "./Appointments";
 import MyAppointments from "./Myappointments";
 import Prescriptions from "./PatientPrescriptions";
 import PatientProfile from "./PatientProfile";
+import PatientChatbot from "./PatientChatbot";
+import PatientComplaints from "./PatientComplaints";
+import NotificationBell from "../../components/NotificationBell";
 
 const PatientDashboard = () => {
 
@@ -82,12 +85,15 @@ const PatientDashboard = () => {
 
         <div>
 
-          <h2
-            className="text-xl font-bold mb-10 text-cyan-600 cursor-pointer"
-            onClick={() => setActivePage("dashboard")}
-          >
-            HealthSync
-          </h2>
+          <div className="flex items-center justify-between mb-10">
+            <h2
+              className="text-xl font-bold text-cyan-600 cursor-pointer"
+              onClick={() => setActivePage("dashboard")}
+            >
+              HealthSync
+            </h2>
+            <NotificationBell />
+          </div>
 
           <ul className="space-y-4 text-gray-700">
 
@@ -154,6 +160,25 @@ const PatientDashboard = () => {
               Medical Records
             </li>
 
+            <li
+              onClick={() => setActivePage("chatbot")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "chatbot"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Health Assistant
+            </li>
+
+            <li
+              onClick={() => setActivePage("complaints")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "complaints"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Complaints
+            </li>
 
             <li
               onClick={() => setActivePage("settings")}
@@ -164,7 +189,6 @@ const PatientDashboard = () => {
             >
               Settings
             </li>
-
           </ul>
 
         </div>
@@ -294,6 +318,14 @@ const PatientDashboard = () => {
         {/* CHAT PAGE FIX */}
 
         {activePage === "chat" && <ChatList />}
+
+        {/* CHATBOT PAGE */}
+
+        {activePage === "chatbot" && <PatientChatbot />}
+
+        {/* COMPLAINTS */}
+
+        {activePage === "complaints" && <PatientComplaints />}
 
       </div>
 
