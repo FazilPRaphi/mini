@@ -1,112 +1,218 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
+import VideoCall from "../../components/Videocall";
+
+const card = { background: "#fff", borderRadius: 16, boxShadow: "0 1px 6px rgba(0,0,0,.07)", padding: 24 };
+
+const STATUS_STYLES = {
+  upcoming: { background: "#FEFCBF", color: "#D69E2E", label: "UPCOMING" },
+  "checked-in": { background: "#C6F6D5", color: "#276749", label: "CHECKED-IN" },
+  completed: { background: "#E2E8F0", color: "#718096", label: "COMPLETED" },
+};
 
 const DoctorAppointments = () => {
+
   const [bookings, setBookings] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const [selected, setSelected] = useState(null);
-  const [patient, setPatient] = useState(null);
   const [history, setHistory] = useState([]);
-
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [medicines, setMedicines] = useState([]);
 
+  const [callRoom, setCallRoom] = useState(null);
+  const [doctorName, setDoctorName] = useState("");
+  const dateStr = selectedDate.toISOString().split("T")[0];
+
   useEffect(() => {
     loadBookings();
+  }, [selectedDate]);
+
+  useEffect(() => {
+
+
+    const channel = supabase
+      .channel("doctor-appointments")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointment_bookings"
+        },
+        () => {
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+
+
   }, []);
 
+  /* LOAD BOOKINGS */
+
   const loadBookings = async () => {
+
+    setLoading(true);
+
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data } = await supabase
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    setDoctorName(profile?.full_name || "Doctor");
+
+    const { data, error } = await supabase
       .from("appointment_bookings")
       .select(`
-        id,
-        booked_at,
-        patient_id,
-        appointment_id,
-        appointments (
-          id,
-          date,
-          time,
-          max_patients
-        ),
-        profiles (
-          full_name,
-          age,
-          gender
-        )
-      `)
+      id,
+      doctor_id,
+      booked_at,
+      queue_position,
+      consultation_started,
+      consultation_completed,
+      call_room,
+      patient_id,
+      appointment_id,
+      appointments(
+        date,
+        time
+      ),
+      profiles:patient_id(
+        full_name,
+        age,
+        gender
+      )
+    `)
       .eq("doctor_id", user.id)
-      .order("booked_at", { ascending: true });
+      .eq("status", "booked")
+      .order("queue_position", { ascending: true });
 
-    setBookings(data || []);
-  };
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
 
-  const applyFilter = () => {
-    if (!selectedDate) return toast.error("Select a date");
-
-    const slots = bookings.filter(
-      b => b.appointments?.date === selectedDate
+    const filtered = (data || []).filter(
+      b => b.appointments?.date === dateStr
     );
 
-    setFiltered(slots);
-    setSelectedSlot(null);
+    setBookings(filtered);
+    setLoading(false);
   };
 
-  const openSlot = (appointmentId) => {
-    const slotBookings = filtered.filter(
-      b => b.appointment_id === appointmentId
-    );
+  /* START CONSULTATION */
 
-    setSelectedSlot({
-      id: appointmentId,
-      bookings: slotBookings,
-      capacity: slotBookings[0]?.appointments?.max_patients || 1,
-    });
+  const startConsultation = async (booking) => {
+
+    const { data: active } = await supabase
+      .from("appointment_bookings")
+      .select("id")
+      .eq("consultation_started", true)
+      .maybeSingle();
+
+    if (active) {
+      toast.error("Another consultation is already running");
+      return;
+    }
+
+    await supabase
+      .from("appointment_bookings")
+      .update({ consultation_started: true })
+      .eq("id", booking.id);
+
+    toast.success("Consultation started");
+
+    loadBookings();
   };
+
+  /* END CONSULTATION */
+
+  const endConsultation = async (booking) => {
+
+    await supabase
+      .from("appointment_bookings")
+      .update({
+        consultation_started: false,
+        consultation_completed: true
+      })
+      .eq("id", booking.id);
+
+    toast.success("Consultation completed");
+
+    loadBookings();
+
+
+  };
+
+  /* OPEN PATIENT */
 
   const openPatient = async (booking) => {
+
+
     setSelected(booking);
-    setPatient(booking.profiles);
+    setTitle("");
+    setDescription("");
+    setMedicines([]);
 
     const { data } = await supabase
       .from("medical_records")
-      .select(`
+      .select(
         id,
         title,
         description,
         created_at,
-        prescriptions (
-          medicine_name,
-          dosage,
-          frequency,
-          duration
-        )
-      `)
+        prescriptions(medicine_name, dosage, frequency, duration)
+      )
       .eq("patient_id", booking.patient_id)
       .order("created_at", { ascending: false });
 
     setHistory(data || []);
+
+
   };
 
   const addMedicine = () => {
-    setMedicines([...medicines, { medicine_name: "", dosage: "", frequency: "", duration: "" }]);
+
+    setMedicines([
+      ...medicines,
+      { medicine_name: "", dosage: "", frequency: "", duration: "" }
+    ]);
+
+
   };
 
   const updateMedicine = (i, f, v) => {
+
+
     const copy = [...medicines];
     copy[i][f] = v;
     setMedicines(copy);
+
+
   };
 
   const saveConsultation = async () => {
+
+
     const { data: { user } } = await supabase.auth.getUser();
+
     if (!title) return toast.error("Title required");
 
     const { data: record } = await supabase
@@ -116,191 +222,155 @@ const DoctorAppointments = () => {
         doctor_id: user.id,
         appointment_booking_id: selected.id,
         title,
-        description,
+        description
       })
       .select()
       .single();
 
     if (medicines.length > 0) {
-      await supabase.from("prescriptions").insert(
-        medicines.map(m => ({ ...m, record_id: record.id }))
-      );
+
+      await supabase
+        .from("prescriptions")
+        .insert(
+          medicines.map(m => ({
+            ...m,
+            record_id: record.id
+          }))
+        );
+
     }
 
-    toast.success("Saved");
-    setTitle(""); 
-    setDescription(""); 
-    setMedicines([]);
+    toast.success("Consultation saved");
+
     openPatient(selected);
+
+
   };
 
-  return (
-    <div className="space-y-8 max-w-6xl">
-      <h1 className="text-3xl font-bold font-exo2">Booked Patients</h1>
+  /* STATUS */
 
-      {!selected ? (
-        <>
-          {/* FILTER */}
-          <div className="bg-white p-5 rounded-xl shadow flex items-center gap-4">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="border px-4 py-2 rounded"
-            />
-            <button
-              onClick={applyFilter}
-              className="bg-orange-500 text-white px-6 py-2 rounded-lg"
-            >
-              View Slot
-            </button>
-          </div>
+  const getStatus = (b) => {
 
-          {/* SLOT LIST */}
-          {filtered.length > 0 && (
-            <div className="space-y-3">
-              {[...new Map(filtered.map(b => [b.appointment_id, b])).values()].map(slot => (
-                <div
-                  key={slot.appointment_id}
-                  className="bg-white p-5 rounded-xl shadow flex justify-between"
-                >
-                  <div>
-                    <p className="font-semibold">
-                      {slot.appointments.date} — {slot.appointments.time}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Max: {slot.appointments.max_patients}
-                    </p>
-                  </div>
+    if (b.consultation_completed) return "completed";
+    if (b.consultation_started) return "checked-in";
 
-                  <button
-                    onClick={() => openSlot(slot.appointment_id)}
-                    className="bg-orange-500 text-white px-4 py-2 rounded"
-                  >
-                    View Patients
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+    return "upcoming";
 
-          {/* DONUT + PATIENT LIST */}
-          {selectedSlot && (
-            <>
-              <SlotChart
-                booked={selectedSlot.bookings.length}
-                capacity={selectedSlot.capacity}
-              />
 
-              <div className="space-y-4">
-                {selectedSlot.bookings.map((b, i) => (
-                  <div key={b.id} className="bg-white p-5 rounded-xl shadow flex justify-between">
-                    <div>
-                      <p className="font-semibold">
-                        {i + 1}. {b.profiles?.full_name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {b.profiles?.gender}, {b.profiles?.age} yrs
-                      </p>
-                    </div>
+  };
 
-                    <button
-                      onClick={() => openPatient(b)}
-                      className="bg-orange-500 text-white px-4 py-2 rounded"
-                    >
-                      Open
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      ) : (
-        /* CONSULTATION VIEW UNCHANGED */
-        <div className="space-y-6">
-          <button onClick={() => setSelected(null)} className="text-sm text-gray-500">← Back</button>
+  if (callRoom) {
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h2 className="font-semibold text-lg">Patient Overview</h2>
-            <p><b>Name:</b> {patient?.full_name}</p>
-            <p><b>Age:</b> {patient?.age}</p>
-            <p><b>Gender:</b> {patient?.gender}</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow space-y-4">
-            <h3 className="font-semibold">New Consultation</h3>
-
-            <input
-              placeholder="Title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="border p-2 w-full rounded"
-            />
-
-            <textarea
-              placeholder="Diagnosis"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              className="border p-2 w-full rounded"
-            />
-
-            {medicines.map((m, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2">
-                <input placeholder="Medicine" onChange={e => updateMedicine(i, "medicine_name", e.target.value)} className="border p-2 rounded"/>
-                <input placeholder="Dosage" onChange={e => updateMedicine(i, "dosage", e.target.value)} className="border p-2 rounded"/>
-              </div>
-            ))}
-
-            <div className="flex gap-6">
-              <button onClick={addMedicine} className="text-blue-600">+ Add medicine</button>
-              <button onClick={saveConsultation} className="bg-green-600 text-white px-6 py-2 rounded">
-                Save
-              </button>
-            </div>
-          </div>
+    return (
+      <div style={{ maxWidth: 900 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Video Consultation</h1>
+          <button onClick={() => setCallRoom(null)}>Leave Call</button>
         </div>
-      )}
-    </div>
-  );
-};
-
-/* ------------------ Donut Chart ------------------ */
-const SlotChart = ({ booked, capacity }) => {
-  const percent = Math.min(100, (booked / capacity) * 100);
-  const strokeDash = `${percent} ${100 - percent}`;
-
-  return (
-    <div className="bg-white p-6 rounded-xl shadow w-fit">
-      <h3 className="font-semibold mb-2">Slot Occupancy</h3>
-
-      <div className="relative w-40 h-40">
-        <svg viewBox="0 0 36 36" className="w-full h-full">
-          <path
-            d="M18 2.0845
-              a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="#eee"
-            strokeWidth="3"
-          />
-          <path
-            d="M18 2.0845
-              a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="#f97316"
-            strokeWidth="3"
-            strokeDasharray={strokeDash}
-          />
-        </svg>
-
-        <div className="absolute inset-0 flex items-center justify-center font-semibold">
-          {booked}/{capacity}
-        </div>
+        <VideoCall
+          roomName={callRoom}
+          userName={`Dr. ${doctorName}`}
+          onLeave={() => setCallRoom(null)}
+        />
       </div>
+    );
+
+  }
+
+  if (selected) {
+
+
+    const p = selected.profiles;
+
+    return (
+      <div style={{ maxWidth: 900 }}>
+        <button onClick={() => setSelected(null)}>← Back to Patients</button>
+      </div>
+    );
+
+
+  }
+
+  return (
+
+
+    <div style={{ maxWidth: 900 }}>
+
+      <h1 style={{ fontSize: 24, fontWeight: 700 }}>
+        Booked Patients
+      </h1>
+
+      {loading && <p>Loading...</p>}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+        {bookings.map(b => {
+
+          const status = getStatus(b);
+          const style = STATUS_STYLES[status];
+
+          const name = b.profiles?.full_name || "Patient";
+          const time = b.appointments?.time?.slice(0, 5);
+
+          return (
+
+            <div key={b.id} style={{ ...card, display: "flex", alignItems: "center", gap: 16 }}>
+
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700 }}>
+                  {name}
+                </p>
+
+                <p style={{ fontSize: 13, color: "#718096" }}>
+                  🕐 {time} | Queue #{b.queue_position}
+                </p>
+              </div>
+
+              <span style={{
+                ...style,
+                padding: "4px 12px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700
+              }}>
+                {style.label}
+              </span>
+
+              {!b.consultation_started && !b.consultation_completed && (
+                <button onClick={() => startConsultation(b)}>
+                  Start Consultation
+                </button>
+              )}
+
+              {b.consultation_started && (
+                <button onClick={() => endConsultation(b)}>
+                  End Consultation
+                </button>
+              )}
+
+              {b.consultation_started && !b.consultation_completed && (
+                <button onClick={() => setCallRoom(b.call_room || `consult-${b.id}`)} style={{ marginLeft: 8, background: "#48BB78", color: "white", padding: "4px 12px", borderRadius: 4, border: "none" }}>
+                  Join Video Call
+                </button>
+              )}
+
+              <button onClick={() => openPatient(b)}>
+                Open Patient
+              </button>
+
+            </div>
+
+          );
+
+        })}
+
+      </div>
+
     </div>
+
+
   );
+
 };
 
 export default DoctorAppointments;

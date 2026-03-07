@@ -1,23 +1,33 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
-import PublicLayout from "./layouts/PublicLayout";
-
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import CompleteProfile from "./pages/CompleteProfile";
+
+
 
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
-import CompleteProfile from "./pages/CompleteProfile";
+
+import Appointments from "./pages/patient/Appointments";
+import MyAppointments from "./pages/patient/Myappointments";
+import Prescriptions from "./pages/patient/PatientPrescriptions";
+import PatientProfile from "./pages/patient/PatientProfile";
+
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
+import ChatList from "./components/ChatList";
+
 import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
-      
-      {/* Global Toaster */}
+
       <Toaster
         position="bottom-right"
         toastOptions={{
@@ -37,20 +47,34 @@ function App() {
       />
 
       <Routes>
-        {/* Public pages with Navbar */}
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-        </Route>
 
-        {/* Dashboards without Navbar */}
+        {/* Public Pages */}
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
+
+        {/* Admin Pages */}
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
+
         <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+        <Route path="appointments" element={<Appointments />} />
+        <Route path="my-appointments" element={<MyAppointments />} />
+        <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="profile" element={<PatientProfile />} />
+        <Route path="chat" element={<ChatList />} />
+
+
+
+
+
       </Routes>
-    </BrowserRouter>
+
+    </BrowserRouter >
   );
 }
 

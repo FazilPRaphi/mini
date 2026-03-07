@@ -1,134 +1,338 @@
 import { useState, useEffect } from "react";
-import Profile from "./PatientProfile";
+import { supabase } from "../../supabaseClient";
+import { useNavigate } from "react-router-dom";
+import ChatList from "../../components/ChatList";
 import Appointments from "./Appointments";
 import MyAppointments from "./Myappointments";
 import Prescriptions from "./PatientPrescriptions";
-import { supabase } from "../../supabaseClient";
+import PatientProfile from "./PatientProfile";
+import PatientChatbot from "./PatientChatbot";
+import PatientComplaints from "./PatientComplaints";
+import NotificationBell from "../../components/NotificationBell";
 
 const PatientDashboard = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [active, setActive] = useState("appointments");
+
+  const navigate = useNavigate();
+
+  const [activePage, setActivePage] = useState("dashboard");
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    const enforceCompletion = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data: profile, error } = await supabase
+    const loadProfile = async () => {
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        navigate("/login");
+        return;
+      }
+
+      const { data } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (error || !profile) return;
+      setProfile(data);
 
-      const patientRequired = [
+      const required = [
         "full_name",
         "age",
         "gender",
         "phone",
         "address",
         "blood_group",
-        "emergency_contact",
+        "emergency_contact"
       ];
 
-      const doctorRequired = ["full_name", "institution", "speciality"];
-
-      const requiredFields =
-        profile.role === "patient" ? patientRequired : doctorRequired;
-
-      const incomplete = requiredFields.some(
-        (field) => !profile[field] || profile[field].toString().trim() === "",
+      const incomplete = required.some(
+        (field) => !data[field] || data[field].toString().trim() === ""
       );
 
       if (incomplete) {
-        window.location.href = "/complete-profile";
+        navigate("/complete-profile");
       }
+
     };
 
-    enforceCompletion();
-  }, []);
+    loadProfile();
 
-  const handleNav = (page) => {
-    setActive(page);
-    setMenuOpen(false);
-  };
+  }, [navigate]);
 
-  const handleLogout = async () => {
+
+
+  const logout = async () => {
+
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    navigate("/login");
+
   };
 
-  const navItem = (key, label) => (
-    <li
-      onClick={() => handleNav(key)}
-      className={`cursor-pointer px-4 py-2 rounded-lg transition-all duration-200
-        ${
-          active === key
-            ? "bg-orange-500 text-white shadow"
-            : "text-gray-700 hover:bg-orange-50 hover:text-orange-600"
-        }`}
-    >
-      {label}
-    </li>
-  );
+
+  if (!profile) {
+    return <div className="p-10 text-gray-500">Loading dashboard...</div>;
+  }
+
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      {/* Overlay for mobile */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-10 md:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
 
-      {/* Sidebar */}
-      <div
-        className={`bg-white w-64 p-6 shadow-lg fixed md:static z-20 h-full
-        ${menuOpen ? "block" : "hidden"} md:block`}
-      >
-        <h2 className="text-2xl font-bold mb-8 text-gray-900">Patient Panel</h2>
+    <div className="min-h-screen flex bg-[#F6F8FB]">
 
-        <ul className="space-y-3">
-          {navItem("appointments", "Appointments")}
-          {navItem("my-appointments", "My Appointments")}
-          {navItem("prescriptions", "Prescriptions")}
-          {navItem("profile", "Profile")}
+      {/* SIDEBAR */}
 
-          <li className="pt-6">
-            <button
-              onClick={handleLogout}
-              className="text-red-500 hover:text-red-600 text-sm"
+      <div className="w-64 bg-white shadow-md p-6 flex flex-col justify-between">
+
+        <div>
+
+          <div className="flex items-center justify-between mb-10">
+            <h2
+              className="text-xl font-bold text-cyan-600 cursor-pointer"
+              onClick={() => setActivePage("dashboard")}
             >
-              Logout
-            </button>
-          </li>
-        </ul>
-      </div>
+              HealthSync
+            </h2>
+            <NotificationBell />
+          </div>
 
-      {/* Main */}
-      <div className="flex-1 p-6 md:ml-64">
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden mb-6 text-2xl bg-white px-3 py-1 rounded shadow"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          ☰
-        </button>
+          <ul className="space-y-4 text-gray-700">
 
-        {/* Page content */}
-        <div className="animate-fadeIn">
-          {active === "profile" && <Profile />}
-          {active === "appointments" && <Appointments />}
-          {active === "my-appointments" && <MyAppointments />}
-          {active === "prescriptions" && <Prescriptions />}
+            <li
+              onClick={() => setActivePage("dashboard")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "dashboard"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Dashboard
+            </li>
+
+
+            <li
+              onClick={() => setActivePage("appointments")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "appointments"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Appointments
+            </li>
+
+
+            <li
+              onClick={() => setActivePage("myappointments")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "myappointments"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              My Appointments
+            </li>
+
+
+            <li
+              onClick={() => setActivePage("prescriptions")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "prescriptions"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Prescriptions
+            </li>
+
+            <li
+              onClick={() => setActivePage("chat")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "chat"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Chat
+            </li>
+
+            <li
+              onClick={() => setActivePage("records")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "records"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Medical Records
+            </li>
+
+            <li
+              onClick={() => setActivePage("chatbot")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "chatbot"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Health Assistant
+            </li>
+
+            <li
+              onClick={() => setActivePage("complaints")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "complaints"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Complaints
+            </li>
+
+            <li
+              onClick={() => setActivePage("settings")}
+              className={`cursor-pointer px-4 py-2 rounded-lg ${activePage === "settings"
+                ? "bg-cyan-500 text-white"
+                : "hover:text-cyan-600"
+                }`}
+            >
+              Settings
+            </li>
+          </ul>
+
         </div>
+
+
+        <div className="space-y-4">
+
+          <button
+            onClick={logout}
+            className="w-full border border-red-500 text-red-500 py-2 rounded-lg hover:bg-red-50"
+          >
+            Logout
+          </button>
+
+          <button className="bg-red-500 text-white py-3 rounded-lg w-full">
+            Emergency Call
+          </button>
+
+        </div>
+
       </div>
+
+
+
+      {/* MAIN CONTENT */}
+
+      <div className="flex-1 p-8">
+
+        {/* DASHBOARD */}
+
+        {activePage === "dashboard" && (
+
+          <>
+
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold">
+                Welcome back, {profile.full_name}
+              </h1>
+              <p className="text-gray-500">Your health dashboard</p>
+            </div>
+
+
+            <h2 className="text-xl font-semibold mb-4">
+              Health Overview
+            </h2>
+
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
+              <div className="bg-white p-6 rounded-xl shadow">
+                <p className="text-gray-500 text-sm">Blood Group</p>
+                <p className="text-2xl font-bold">{profile.blood_group}</p>
+              </div>
+
+
+              <div className="bg-white p-6 rounded-xl shadow">
+                <p className="text-gray-500 text-sm">Age</p>
+                <p className="text-2xl font-bold">{profile.age}</p>
+              </div>
+
+
+              <div className="bg-white p-6 rounded-xl shadow">
+                <p className="text-gray-500 text-sm">Gender</p>
+                <p className="text-2xl font-bold">{profile.gender}</p>
+              </div>
+
+
+              <div className="bg-white p-6 rounded-xl shadow">
+                <p className="text-gray-500 text-sm">Phone</p>
+                <p className="text-2xl font-bold break-words">
+                  {profile.phone}
+                </p>
+              </div>
+
+            </div>
+
+
+            {/* QUICK ACTIONS */}
+
+            <div className="bg-white p-6 rounded-xl shadow w-full max-w-md">
+
+              <h3 className="font-semibold mb-4">
+                Quick Actions
+              </h3>
+
+              <button
+                onClick={() => setActivePage("appointments")}
+                className="w-full bg-cyan-500 text-white py-2 rounded-lg mb-3"
+              >
+                Book Appointment
+              </button>
+
+              <button
+                onClick={() => setActivePage("chat")}
+                className="w-full border py-2 rounded-lg"
+              >
+                Message Doctor
+              </button>
+
+            </div>
+
+          </>
+
+        )}
+
+
+        {/* APPOINTMENTS */}
+
+        {activePage === "appointments" && <Appointments />}
+
+
+        {/* MY APPOINTMENTS */}
+
+        {activePage === "myappointments" && <MyAppointments />}
+
+
+        {/* PRESCRIPTIONS */}
+
+        {activePage === "prescriptions" && <Prescriptions />}
+
+
+        {/* SETTINGS */}
+
+        {activePage === "settings" && <PatientProfile />}
+
+
+        {/* CHAT PAGE FIX */}
+
+        {activePage === "chat" && <ChatList />}
+
+        {/* CHATBOT PAGE */}
+
+        {activePage === "chatbot" && <PatientChatbot />}
+
+        {/* COMPLAINTS */}
+
+        {activePage === "complaints" && <PatientComplaints />}
+
+      </div>
+
     </div>
+
   );
+
 };
 
 export default PatientDashboard;

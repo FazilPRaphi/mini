@@ -1,9 +1,140 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import jsPDF from "jspdf";
 
 const PatientPrescriptions = () => {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const downloadPDF = (record) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // 1. HEADER (HealthSync Branding)
+    // Cyan background for header
+    doc.setFillColor(11, 197, 234); // #0BC5EA
+    doc.rect(0, 0, pageWidth, 45, "F");
+
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(32);
+    doc.text("HealthSync", 20, 30);
+
+    // Subtitle right aligned
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Official E-Prescription", pageWidth - 20, 30, { align: "right" });
+
+    // Body text color reset
+    doc.setTextColor(30, 30, 30);
+
+    // 2. DOCTOR & RECORD DETAILS
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Dr. ${record.doctor?.full_name || "Unknown"}`, 20, 60);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(record.doctor?.speciality || "General Physician", 20, 67);
+    doc.text("HealthSync Digital Clinic Partner", 20, 74);
+
+    // Record details on the right
+    const dateObj = new Date(record.created_at);
+    const dateStr = dateObj.toLocaleDateString();
+    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    doc.setTextColor(30, 30, 30);
+    doc.text(`Date: ${dateStr}`, pageWidth - 20, 60, { align: "right" });
+    doc.text(`Time: ${timeStr}`, pageWidth - 20, 67, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.text(`Ref ID: #${record.id.slice(0, 8).toUpperCase()}`, pageWidth - 20, 74, { align: "right" });
+
+    // Divider Line
+    doc.setDrawColor(230, 230, 230);
+    doc.line(20, 82, pageWidth - 20, 82);
+
+    // 3. CONSULTATION & CLINICAL NOTES
+    doc.setFontSize(12);
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "bold");
+    doc.text("Reason For Consultation:", 20, 100);
+    doc.setFont("helvetica", "normal");
+    doc.text(record.title || "Health Checkup", 75, 100);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Clinical Notes & Diagnosis:", 20, 115);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    const notesArr = doc.splitTextToSize(record.description || "Patient is secure and healthy.", pageWidth - 40);
+    doc.text(notesArr, 20, 125);
+
+    let startY = 125 + (notesArr.length * 6) + 15;
+
+    // 4. MEDICINES (Rx Section)
+    doc.setFontSize(28);
+    doc.setFont("times", "italic");
+    doc.text("Rx", 20, startY);
+
+    startY += 10;
+
+    // Table Header
+    doc.setFillColor(235, 235, 235); // Light grey table header
+    doc.rect(20, startY, pageWidth - 40, 10, "F");
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(50, 50, 50);
+    doc.text("Medicine Name", 25, startY + 6.5);
+    doc.text("Dosage", 100, startY + 6.5);
+    doc.text("Frequency", 140, startY + 6.5);
+    doc.text("Duration", 175, startY + 6.5);
+
+    startY += 18;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 30, 30);
+
+    record.prescriptions?.forEach((p, i) => {
+      doc.text(`${i + 1}.  ${p.medicine_name}`, 25, startY);
+      doc.text(p.dosage || "-", 100, startY);
+      doc.text(p.frequency || "-", 140, startY);
+      doc.text(p.duration || "-", 175, startY);
+
+      doc.setDrawColor(240, 240, 240);
+      doc.line(20, startY + 3.5, pageWidth - 20, startY + 3.5);
+
+      startY += 10;
+    });
+
+    // 5. SIGNATURE & FOOTER
+    // Digital Approval Stamp
+    const stampX = pageWidth - 70;
+    const stampY = pageHeight - 65;
+
+    doc.setFillColor(11, 197, 234); // Cyan stamp
+    doc.roundedRect(stampX, stampY, 50, 15, 3, 3, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("E-APPROVED", stampX + 25, stampY + 9.5, { align: "center" });
+
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Digitally Signed by Dr. ${record.doctor?.full_name || "Unknown"}`, pageWidth - 20, pageHeight - 42, { align: "right" });
+
+    // Footer Disclaimer
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    const footerText1 = "This document is an electronically generated and officially authorized prescription by HealthSync.";
+    const footerText2 = "Valid at all registered pharmacies. Do not dispense if information appears altered or tampered with.";
+    doc.text(footerText1, pageWidth / 2, pageHeight - 20, { align: "center" });
+    doc.text(footerText2, pageWidth / 2, pageHeight - 15, { align: "center" });
+
+    doc.save(`HealthSync_Prescription_${record.id.slice(0, 8)}.pdf`);
+  };
 
   useEffect(() => {
     load();
@@ -42,123 +173,174 @@ const PatientPrescriptions = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 px-4">
+    <div className="space-y-8">
 
       {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-4xl font-bold text-gray-900">
           My Prescriptions
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-gray-500 mt-2">
           View your past consultations and prescribed medicines
         </p>
       </div>
 
-      {/* LOADING STATE */}
+      {/* LOADING */}
       {loading && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="bg-white p-6 rounded-2xl shadow animate-pulse space-y-3"
+              className="bg-white p-8 rounded-2xl shadow animate-pulse space-y-4"
             >
-              <div className="h-5 bg-gray-200 rounded w-1/3" />
+              <div className="h-6 bg-gray-200 rounded w-1/3" />
               <div className="h-4 bg-gray-200 rounded w-1/4" />
-              <div className="h-3 bg-gray-200 rounded w-full" />
+              <div className="h-24 bg-gray-200 rounded" />
             </div>
           ))}
         </div>
       )}
 
-      {/* EMPTY STATE */}
+      {/* EMPTY */}
       {!loading && records.length === 0 && (
-        <div className="bg-white p-10 rounded-2xl shadow text-center text-gray-600">
-          No prescriptions yet.
+        <div className="bg-white rounded-2xl p-10 shadow text-center text-gray-500">
+          No prescriptions yet
         </div>
       )}
 
       {/* RECORDS */}
       {!loading && records.length > 0 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
+
           {records.map((record) => (
+
             <div
               key={record.id}
-              className="bg-white p-6 rounded-2xl shadow border border-gray-100 hover:shadow-lg transition space-y-5"
+              className="bg-white rounded-2xl shadow p-8 flex flex-col lg:flex-row gap-8"
             >
-              {/* HEADER */}
-              <div className="border-b pb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
+
+              {/* LEFT SECTION */}
+              <div className="flex-1 space-y-6">
+
+                {/* CATEGORY + DATE */}
+                <div className="flex justify-between items-start">
+
+                  <span className="bg-blue-100 text-blue-600 text-xs px-3 py-1 rounded-full">
+                    Consultation
+                  </span>
+
+                  <div className="text-sm text-gray-500">
+                    {new Date(record.created_at).toLocaleString()}
+                  </div>
+
+                </div>
+
+                {/* TITLE */}
+                <h2 className="text-2xl font-bold text-gray-900">
                   {record.title}
                 </h2>
 
-                <p className="text-sm text-gray-500 mt-1">
-                  Consulted by{" "}
-                  <span className="font-medium text-orange-600">
-                    Dr. {record.doctor?.full_name || "Unknown"}
-                  </span>
-                </p>
+                {/* DOCTOR */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-teal-500 text-white rounded-full flex items-center justify-center">
+                    👨‍⚕️
+                  </div>
 
-                <p className="text-xs text-gray-400">
-                  {new Date(record.created_at).toLocaleString()}
-                </p>
+                  <div>
+                    <p className="font-medium">
+                      Dr. {record.doctor?.full_name || "Unknown"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      General Physician
+                    </p>
+                  </div>
+                </div>
+
+                {/* CLINICAL NOTES */}
+                {record.description && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+
+                    <p className="text-xs font-semibold text-blue-600 mb-2">
+                      CLINICAL NOTES
+                    </p>
+
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {record.description}
+                    </p>
+
+                  </div>
+                )}
+
               </div>
 
-              {/* DESCRIPTION */}
-              {record.description && (
-                <div>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {record.description}
-                  </p>
-                </div>
-              )}
+              {/* RIGHT SECTION (MEDICINES) */}
+              <div className="w-full lg:w-80 space-y-4">
 
-              {/* MEDICINES */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-800">
+                <p className="text-sm font-semibold text-gray-600">
                   Prescribed Medicines
-                </h3>
+                </p>
 
                 {record.prescriptions?.length > 0 ? (
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {record.prescriptions.map((p) => (
-                      <div
-                        key={p.id}
-                        className="border rounded-xl p-4 bg-orange-50 text-sm space-y-1"
-                      >
-                        <p>
-                          <span className="font-medium text-gray-800">Medicine:</span>{" "}
+                  record.prescriptions.map((p) => (
+
+                    <div
+                      key={p.id}
+                      className="border rounded-xl p-4 space-y-2"
+                    >
+
+                      <div className="flex justify-between items-center">
+
+                        <p className="font-semibold">
                           {p.medicine_name}
                         </p>
 
-                        <p>
-                          <span className="font-medium text-gray-800">Dosage:</span>{" "}
-                          {p.dosage}
-                        </p>
+                        <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded">
+                          ACTIVE
+                        </span>
 
-                        {p.frequency && (
-                          <p>
-                            <span className="font-medium text-gray-800">Frequency:</span>{" "}
-                            {p.frequency}
-                          </p>
-                        )}
-
-                        {p.duration && (
-                          <p>
-                            <span className="font-medium text-gray-800">Duration:</span>{" "}
-                            {p.duration}
-                          </p>
-                        )}
                       </div>
-                    ))}
-                  </div>
+
+                      <p className="text-sm text-gray-500">
+                        {p.dosage} • {p.frequency}
+                      </p>
+
+                      {p.duration && (
+                        <p className="text-xs text-gray-400">
+                          Duration: {p.duration}
+                        </p>
+                      )}
+
+                    </div>
+
+                  ))
                 ) : (
                   <p className="text-sm text-gray-500">
-                    No medicines added for this consultation.
+                    No medicines added.
                   </p>
                 )}
+
+                {/* ACTION BUTTONS */}
+                <div className="flex gap-3 pt-4">
+
+                  <button
+                    onClick={() => downloadPDF(record)}
+                    className="border border-blue-500 text-blue-500 px-4 py-2 rounded-lg text-sm hover:bg-blue-50"
+                  >
+                    Download PDF
+                  </button>
+
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                    Order Refill
+                  </button>
+
+                </div>
+
               </div>
+
             </div>
+
           ))}
+
         </div>
       )}
     </div>
