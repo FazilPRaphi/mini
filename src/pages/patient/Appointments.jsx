@@ -6,7 +6,9 @@ const DEFAULT_CAPACITY = 10;
 
 const Appointments = () => {
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .split("T")[0];
 
   const [slots, setSlots] = useState([]);
   const [filteredSlots, setFilteredSlots] = useState([]);
@@ -19,12 +21,12 @@ const Appointments = () => {
   const [appliedDate, setAppliedDate] = useState(todayStr);
 
   useEffect(() => {
-    fetchSlots(selectedDate);
-  }, [selectedDate]);
+    fetchSlots();
+  }, []);
 
   useEffect(() => {
     applySearch();
-  }, [search, slots]);
+  }, [search, slots, appliedDate]);
 
   const fetchSlots = async () => {
 
@@ -104,12 +106,7 @@ const Appointments = () => {
 
     setSlots(available);
 
-    const todaySlots = available.filter(
-      s => s.date === todayStr
-    );
-
-    setFilteredSlots(todaySlots);
-
+    setSlots(available);
     setLoading(false);
 
   };
@@ -117,19 +114,18 @@ const Appointments = () => {
 
   const applySearch = () => {
 
+    const dateSlots = slots.filter(
+      s => s.date === appliedDate
+    );
+
     if (!search) {
-
-      const dateSlots = slots.filter(
-        s => s.date === appliedDate
-      );
-
       setFilteredSlots(dateSlots);
       return;
     }
 
     const term = search.toLowerCase();
 
-    const result = slots.filter(slot => {
+    const result = dateSlots.filter(slot => {
       const name = slot.profiles?.full_name?.toLowerCase() || "";
       const spec = slot.profiles?.speciality?.toLowerCase() || "";
 
@@ -147,12 +143,7 @@ const Appointments = () => {
       return;
     }
 
-    const filtered = slots.filter(
-      s => s.date === selectedDate
-    );
-
     setAppliedDate(selectedDate);
-    setFilteredSlots(filtered);
 
   };
 
@@ -161,12 +152,7 @@ const Appointments = () => {
 
     setSelectedDate(todayStr);
     setAppliedDate(todayStr);
-
-    const todaySlots = slots.filter(
-      s => s.date === todayStr
-    );
-
-    setFilteredSlots(todaySlots);
+    setSearch("");
 
   };
 

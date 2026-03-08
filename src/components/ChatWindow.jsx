@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import toast from "react-hot-toast";
-import { Send, Paperclip, FileText, Clock, Mic } from "lucide-react";
+import { Send, Paperclip, FileText, Clock, Mic, X, User } from "lucide-react";
 
 const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
@@ -12,7 +12,13 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
     const [online, setOnline] = useState(false);
 
     const [recording, setRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const recordingTimerRef = useRef(null);
     const mediaRecorderRef = useRef(null);
+
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const [editingMsgId, setEditingMsgId] = useState(null);
+    const [editText, setEditText] = useState("");
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -166,7 +172,10 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
                     const newMessage = payload.new;
 
-                    setMessages(prev => [...prev, newMessage]);
+                    setMessages(prev => {
+                        if (prev.find(m => m.id === newMessage.id)) return prev;
+                        return [...prev, newMessage];
+                    });
 
                     if (newMessage.sender_id !== currentUserId) {
 
@@ -203,18 +212,26 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
         if (!newMsg.trim()) return;
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from("chat_messages")
             .insert({
                 booking_id: booking.id,
                 sender_id: currentUserId,
                 content: newMsg,
                 seen: false
+            })
+            .select()
+            .single();
+
+        if (error) {
+            toast.error("Send failed");
+        } else {
+            setNewMsg("");
+            setMessages(prev => {
+                if (prev.find(m => m.id === data.id)) return prev;
+                return [...prev, data];
             });
-
-        if (error) toast.error("Send failed");
-
-        else setNewMsg("");
+        }
 
     };
 
@@ -237,16 +254,27 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
     /* EDIT */
 
-    const editMessage = async (id, oldText) => {
+    const startEditing = (id, oldText) => {
+        setActiveDropdown(null);
+        setEditingMsgId(id);
+        setEditText(oldText);
+    };
 
-        const text = prompt("Edit message", oldText);
+    const cancelEditing = () => {
+        setEditingMsgId(null);
+        setEditText("");
+    };
 
-        if (!text) return;
+    const saveEdit = async (id) => {
+        if (!editText.trim()) {
+            cancelEditing();
+            return;
+        }
 
         await supabase
             .from("chat_messages")
             .update({
-                content: text,
+                content: editText,
                 edited: true
             })
             .eq("id", id);
@@ -254,11 +282,12 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
         setMessages(prev =>
             prev.map(m =>
                 m.id === id
-                    ? { ...m, content: text, edited: true }
+                    ? { ...m, content: editText, edited: true }
                     : m
             )
         );
 
+        cancelEditing();
     };
 
 
@@ -268,15 +297,17 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
         const path = `chat/${booking.id}-${Date.now()}-${file.name}`;
 
-        await supabase.storage
+        const { data: uploadData, error } = await supabase.storage
             .from("chat-files")
             .upload(path, file);
+
+        if (error) { toast.error("File upload failed"); return; }
 
         const { data } = supabase.storage
             .from("chat-files")
             .getPublicUrl(path);
 
-        await supabase
+        const { data: msgData, error: msgError } = await supabase
             .from("chat_messages")
             .insert({
                 booking_id: booking.id,
@@ -284,7 +315,13 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
                 file_url: data.publicUrl,
                 file_name: file.name,
                 seen: false
-            });
+            })
+            .select()
+            .single();
+
+        if (msgData) {
+            setMessages(prev => prev.find(m => m.id === msgData.id) ? prev : [...prev, msgData]);
+        }
 
     };
 
@@ -293,56 +330,98 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
     const startRecording = async () => {
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        mediaRecorderRef.current = new MediaRecorder(stream);
+            mediaRecorderRef.current = new MediaRecorder(stream);
 
-        const chunks = [];
+            const chunks = [];
 
-        mediaRecorderRef.current.ondataavailable = e => {
-            chunks.push(e.data);
-        };
+            mediaRecorderRef.current.ondataavailable = e => {
+                if (e.data && e.data.size > 0) {
+                    chunks.push(e.data);
+                }
+            };
 
-        mediaRecorderRef.current.onstop = async () => {
+            mediaRecorderRef.current.onstop = async () => {
 
-            const blob = new Blob(chunks, { type: "audio/webm" });
+                const blob = new Blob(chunks, { type: "audio/webm" });
 
-            const fileName = `audio-${Date.now()}.webm`;
+                const fileName = `audio-${Date.now()}.webm`;
 
-            const path = `chat-audio/${fileName}`;
+                const path = `chat/${booking.id}-${fileName}`;
 
-            await supabase.storage
-                .from("chat-files")
-                .upload(path, blob);
+                const { error: uploadError } = await supabase.storage
+                    .from("chat-files")
+                    .upload(path, blob);
 
-            const { data } = supabase.storage
-                .from("chat-files")
-                .getPublicUrl(path);
+                if (uploadError) {
+                    console.error("Audio Upload Error:", uploadError);
+                    toast.error("Audio upload failed");
+                    return;
+                }
 
-            await supabase
-                .from("chat_messages")
-                .insert({
-                    booking_id: booking.id,
-                    sender_id: currentUserId,
-                    audio_url: data.publicUrl,
-                    seen: false
-                });
+                const { data } = supabase.storage
+                    .from("chat-files")
+                    .getPublicUrl(path);
 
-        };
+                const { data: msgData } = await supabase
+                    .from("chat_messages")
+                    .insert({
+                        booking_id: booking.id,
+                        sender_id: currentUserId,
+                        audio_url: data.publicUrl,
+                        seen: false
+                    })
+                    .select()
+                    .single();
 
-        mediaRecorderRef.current.start();
+                if (msgData) {
+                    setMessages(prev => prev.find(m => m.id === msgData.id) ? prev : [...prev, msgData]);
+                }
 
-        setRecording(true);
+            };
+
+            mediaRecorderRef.current.start();
+            setRecording(true);
+            setRecordingTime(0);
+
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error(err);
+            toast.error("Could not start recording");
+        }
 
     };
 
 
-    const stopRecording = () => {
+    const stopRecording = (cancel = false) => {
 
-        mediaRecorderRef.current.stop();
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+        }
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            if (cancel) {
+                // To prevent the upload from triggering, we clear the onstop handler
+                mediaRecorderRef.current.onstop = null;
+            }
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+        }
 
         setRecording(false);
+        setRecordingTime(0);
 
+    };
+
+    const formatRecordTime = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, "0")}`;
     };
 
 
@@ -363,210 +442,238 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
 
     return (
-
-        <div className="max-w-6xl mx-auto px-4 space-y-6">
-
-
+        <div className="max-w-4xl mx-auto w-full h-[85vh] flex flex-col bg-gray-50 rounded-2xl shadow-xl overflow-hidden border border-gray-100">
             {/* HEADER */}
+            <div className="bg-[#0BC5EA] px-6 py-4 flex justify-between items-center shadow-sm z-10 transition-colors duration-300">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                        <User size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold text-white tracking-wide">
+                            {booking.otherPartyName}
+                        </h1>
+                        <p className="text-sm text-cyan-50 font-medium">
+                            {online ? "Online" : "Offline"}
+                        </p>
+                    </div>
+                </div>
 
-            <div className="flex justify-between items-center">
-
-                <div>
-
+                <div className="flex items-center gap-4">
+                    {unreadCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">
+                            {unreadCount} New
+                        </span>
+                    )}
+                    <span className="bg-white/20 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm font-medium">
+                        <Clock size={14} />
+                        {timeLeft}
+                    </span>
                     <button
                         onClick={onBack}
-                        className="text-sm text-gray-500 hover:text-gray-700"
+                        className="text-white hover:bg-white/20 p-2 rounded-full transition-colors ml-2"
                     >
-                        ← Back
+                        <X size={24} />
                     </button>
-
-                    <h1 className="text-2xl font-bold mt-2">
-                        {booking.otherPartyName}
-                    </h1>
-
-                    <p className={`text-xs ${online ? "text-green-600" : "text-gray-400"}`}>
-                        {online ? "Online" : "Offline"}
-                    </p>
-
-                    {unreadCount > 0 && (
-                        <p className="text-xs text-red-500">
-                            {unreadCount} unread message{unreadCount > 1 && "s"}
-                        </p>
-                    )}
-
                 </div>
-
-                <span className="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-
-                    <Clock size={12} />
-                    {timeLeft}
-
-                </span>
-
             </div>
 
+            {/* CHAT MESSAGES */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50">
+                {messages.map((msg, index) => {
+                    const isMine = msg.sender_id === currentUserId;
+                    return (
+                        <div key={msg.id} className="flex flex-col w-full">
+                            {index === firstUnreadIndex && unreadCount > 0 && (
+                                <div className="flex items-center gap-3 my-6">
+                                    <div className="flex-1 h-px bg-red-200" />
+                                    <span className="text-xs text-red-500 font-bold uppercase tracking-wider bg-red-50 px-3 py-1 rounded-full">
+                                        New Messages
+                                    </span>
+                                    <div className="flex-1 h-px bg-red-200" />
+                                </div>
+                            )}
 
-            {/* CHAT */}
+                            <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                                <div className={`relative max-w-[75%] px-5 py-3 shadow-sm group ${isMine
+                                        ? "bg-[#0BC5EA] text-white rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-sm"
+                                        : "bg-white text-gray-800 border border-gray-100 rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm"
+                                    }`}>
 
-            <div className="bg-white rounded-2xl shadow flex flex-col h-[65vh]">
+                                    {isMine && !msg.deleted && editingMsgId !== msg.id && (
+                                        <div className="absolute top-2 -left-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <button
+                                                onClick={() => setActiveDropdown(activeDropdown === msg.id ? null : msg.id)}
+                                                className="p-1 text-gray-400 hover:text-cyan-500 bg-white rounded-full shadow-md border border-gray-100"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+                                            </button>
 
-
-                {/* MESSAGES */}
-
-                <div className="flex-1 overflow-y-auto p-6 space-y-3">
-
-                    {messages.map((msg, index) => {
-
-                        const isMine = msg.sender_id === currentUserId;
-
-                        return (
-
-                            <div key={msg.id}>
-
-                                {index === firstUnreadIndex && unreadCount > 0 && (
-
-                                    <div className="flex items-center gap-3 my-4">
-
-                                        <div className="flex-1 h-px bg-red-300" />
-
-                                        <span className="text-xs text-red-500 font-semibold">
-                                            New Messages
-                                        </span>
-
-                                        <div className="flex-1 h-px bg-red-300" />
-
-                                    </div>
-
-                                )}
-
-                                <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-
-                                    <div className={`max-w-sm px-4 py-2 rounded-xl text-sm
-${isMine
-                                            ? "bg-cyan-500 text-white"
-                                            : "bg-gray-100 text-gray-800"
-                                        }`}>
-
-                                        {msg.deleted ? (
-                                            <p className="italic text-gray-400">
-                                                Message deleted
-                                            </p>
-                                        ) : (
-
-                                            <>
-
-                                                {msg.content && <p>{msg.content}</p>}
-
-                                                {msg.audio_url &&
-                                                    <audio controls src={msg.audio_url} className="mt-1" />
-                                                }
-
-                                                {msg.file_url &&
-                                                    <a
-                                                        href={msg.file_url}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="flex items-center gap-2 mt-1 underline"
+                                            {activeDropdown === msg.id && (
+                                                <div className="absolute top-0 right-8 bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden min-w-[100px] z-20">
+                                                    {msg.content && (
+                                                        <button
+                                                            onClick={() => startEditing(msg.id, msg.content)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                        >
+                                                            <FileText size={14} /> Edit
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => { setActiveDropdown(null); deleteMessage(msg.id); }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                                                     >
-                                                        <FileText size={14} />
-                                                        {msg.file_name}
-                                                    </a>
-                                                }
+                                                        <X size={14} /> Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                                                <p className="text-[10px] opacity-70 mt-1 text-right">
+                                    {msg.deleted ? (
+                                        <p className="italic text-gray-400 text-sm flex items-center gap-2">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
+                                            This message was deleted
+                                        </p>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            {editingMsgId === msg.id ? (
+                                                <div className="flex flex-col gap-2 min-w-[200px]">
+                                                    <textarea
+                                                        value={editText}
+                                                        onChange={(e) => setEditText(e.target.value)}
+                                                        className="w-full text-[15px] p-2 rounded-lg text-gray-800 bg-white/90 focus:outline-none focus:ring-2 focus:ring-cyan-300 resize-none min-w-[200px]"
+                                                        rows={2}
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex justify-end gap-2 mt-1">
+                                                        <button
+                                                            onClick={cancelEditing}
+                                                            className="text-xs px-3 py-1.5 rounded-md bg-black/10 hover:bg-black/20 text-white font-medium transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => saveEdit(msg.id)}
+                                                            className="text-xs px-3 py-1.5 rounded-md bg-white text-cyan-600 hover:bg-gray-100 font-bold shadow-sm transition-colors"
+                                                        >
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {msg.content && <p className="text-[15px] leading-relaxed mb-1">{msg.content}</p>}
 
-                                                    {formatTime(msg.created_at)}
+                                                    {msg.audio_url &&
+                                                        <audio controls src={msg.audio_url} className="mt-2 h-10 w-full max-w-[240px]" />
+                                                    }
 
-                                                    {msg.edited && " (edited)"}
+                                                    {msg.file_url &&
+                                                        <a
+                                                            href={msg.file_url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="flex items-center gap-2 mt-2 underline text-sm opacity-90"
+                                                        >
+                                                            <FileText size={16} />
+                                                            {msg.file_name}
+                                                        </a>
+                                                    }
 
-                                                    {isMine && msg.seen && " ✓✓"}
-
-                                                </p>
-
-                                            </>
-
-                                        )}
-
-                                        {isMine && !msg.deleted &&
-
-                                            <div className="text-[10px] mt-1 flex gap-2">
-
-                                                <button onClick={() => editMessage(msg.id, msg.content)}>
-                                                    Edit
-                                                </button>
-
-                                                <button onClick={() => deleteMessage(msg.id)}>
-                                                    Delete
-                                                </button>
-
-                                            </div>
-
-                                        }
-
-                                    </div>
+                                                    <p className={`text-[11px] mt-1.5 font-medium ${isMine ? "text-cyan-100" : "text-gray-400"} text-right`}>
+                                                        {formatTime(msg.created_at)}
+                                                        {msg.edited && " (edited)"}
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        </div>
+                    );
+                })}
+                <div ref={messagesEndRef} />
+            </div>
 
-                        );
+            {/* INPUT */}
+            <div className="bg-white p-4 border-t border-gray-100">
+                <form onSubmit={sendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={e => uploadFile(e.target.files[0])}
+                    />
 
-                    })}
-
-                    <div ref={messagesEndRef} />
-
-                </div>
-
-
-                {/* INPUT */}
-
-                <div className="border-t p-4">
-
-                    <form onSubmit={sendMessage} className="flex gap-2">
-
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            onChange={e => uploadFile(e.target.files[0])}
-                        />
-
+                    {!recording && (
                         <button
                             type="button"
                             onClick={() => fileInputRef.current.click()}
-                            className="px-3 text-gray-500"
+                            className="p-3 text-gray-400 hover:text-cyan-500 hover:bg-cyan-50 rounded-full transition-colors flex-shrink-0"
                         >
-                            <Paperclip size={20} />
+                            <Paperclip size={22} />
                         </button>
+                    )}
 
-                        <input
-                            value={newMsg}
-                            onChange={e => setNewMsg(e.target.value)}
-                            placeholder="Type a message..."
-                            className="flex-1 border rounded-lg px-4 py-2 text-sm"
-                        />
+                    <div className="flex-1 relative">
+                        {recording ? (
+                            <div className="w-full border border-red-200 bg-red-50 rounded-full px-5 py-3.5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                                    <span className="text-red-500 font-medium font-mono">{formatRecordTime(recordingTime)}</span>
+                                </div>
+                                <span className="text-red-400 text-sm animate-pulse mr-4">Recording audio...</span>
+                            </div>
+                        ) : (
+                            <input
+                                value={newMsg}
+                                onChange={e => setNewMsg(e.target.value)}
+                                placeholder="Type your message..."
+                                className="w-full border border-gray-200 bg-gray-50 rounded-full px-5 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all font-medium text-gray-700"
+                            />
+                        )}
+                    </div>
 
-                        <button
-                            type="submit"
-                            className="bg-cyan-500 text-white px-4 rounded-lg"
-                        >
-                            <Send size={16} />
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={recording ? stopRecording : startRecording}
-                            className="px-3 text-gray-500"
-                        >
-                            <Mic size={20} />
-                        </button>
-
-                    </form>
-
-                </div>
-
+                    {recording ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => stopRecording(true)}
+                                className="p-3 text-red-400 hover:bg-red-50 rounded-full transition-all flex-shrink-0"
+                            >
+                                <X size={22} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => stopRecording(false)}
+                                className="bg-green-500 hover:bg-green-600 text-white p-3.5 rounded-full transition-all shadow-md hover:shadow-lg flex-shrink-0"
+                            >
+                                <Send size={20} className="ml-1" />
+                            </button>
+                        </>
+                    ) : (
+                        newMsg.trim() ? (
+                            <button
+                                type="submit"
+                                className="bg-[#0BC5EA] hover:bg-cyan-500 text-white p-3.5 rounded-full transition-all shadow-md hover:shadow-lg flex-shrink-0"
+                            >
+                                <Send size={20} className="ml-1" />
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={startRecording}
+                                className="bg-[#0BC5EA] hover:bg-cyan-500 text-white p-3.5 rounded-full transition-all shadow-md hover:shadow-lg flex-shrink-0"
+                            >
+                                <Mic size={20} />
+                            </button>
+                        )
+                    )}
+                </form>
             </div>
-
         </div>
-
     );
 
 };
