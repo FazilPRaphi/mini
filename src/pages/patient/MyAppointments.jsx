@@ -11,6 +11,7 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
     const [callRoom, setCallRoom] = useState(null);
     const [userName, setUserName] = useState("");
+    const [hidePast, setHidePast] = useState(true);
 
     /* LOAD APPOINTMENTS ON PAGE LOAD */
 
@@ -175,11 +176,21 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
     const canJoinCall = (date, time) => {
 
-        const now = new Date();
-        const appointment = new Date(`${date}T${time}`);
+        if (!date || !time) return false;
 
-        const openTime = new Date(appointment.getTime() - 10 * 60000);
-        const closeTime = new Date(appointment.getTime() + 90 * 60000);
+        const now = new Date();
+        let appointment = new Date(`${date} ${time}`);
+
+        if (isNaN(appointment.getTime())) {
+            appointment = new Date(`${date}T${time}`);
+        }
+
+        if (isNaN(appointment.getTime())) {
+            return false;
+        }
+
+        const openTime = new Date(appointment.getTime() - 10 * 60000); // 10 mins before
+        const closeTime = new Date(appointment.getTime() + 90 * 60000); // 90 mins after
 
         return now >= openTime && now <= closeTime;
 
@@ -215,18 +226,46 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
     /* MAIN PAGE */
 
+    const displayAppointments = appointments.filter(item => {
+        if (!hidePast) return true;
+        if (item.status === "completed" || item.status === "cancelled") return false;
+
+        const slot = item.appointments;
+        if (!slot?.date || !slot?.time) return true;
+
+        let appointmentDate = new Date(`${slot.date} ${slot.time}`);
+        if (isNaN(appointmentDate.getTime())) {
+            appointmentDate = new Date(`${slot.date}T${slot.time}`);
+        }
+
+        if (isNaN(appointmentDate.getTime())) return true;
+
+        const now = new Date();
+        // Hide if the appointment ended more than 2 hours ago
+        return appointmentDate.getTime() + (2 * 60 * 60 * 1000) > now.getTime();
+    });
+
     return (
 
         <div className="max-w-6xl mx-auto px-4 space-y-8">
 
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                    My Appointments
-                </h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        My Appointments
+                    </h1>
 
-                <p className="text-sm text-gray-500">
-                    View and manage your bookings
-                </p>
+                    <p className="text-sm text-gray-500">
+                        View and manage your bookings
+                    </p>
+                </div>
+
+                <button
+                    onClick={() => setHidePast(!hidePast)}
+                    className={`px-4 py-2 rounded-lg font-medium transition text-sm flex items-center gap-2 ${hidePast ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                    {hidePast ? "Show All Bookings" : "Hide Passed Bookings"}
+                </button>
             </div>
 
             {loading && (
@@ -244,7 +283,7 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             )}
 
-            {!loading && appointments.length === 0 && (
+            {!loading && displayAppointments.length === 0 && (
 
                 <div className="bg-white p-10 rounded-2xl shadow text-center">
 
@@ -260,11 +299,11 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
             )}
 
-            {!loading && appointments.length > 0 && (
+            {!loading && displayAppointments.length > 0 && (
 
                 <div className="grid md:grid-cols-2 gap-6">
 
-                    {appointments.map((item) => {
+                    {displayAppointments.map((item) => {
 
                         const slot = item.appointments;
                         const doctor = slot?.profiles;
@@ -332,23 +371,23 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
                                 )}
 
-                                {item.status === "booked" && !item.consultation_started && (
+                                {item.status === "booked" && !canJoinCall(slot?.date, slot?.time) && (
 
                                     <p className="text-sm text-yellow-600 mt-2">
-                                        Queue position: {item.queue_position || "-"}. Waiting for doctor...
+                                        Queue position: {item.queue_position || "-"}. Video link opens 10 mins before.
                                     </p>
 
                                 )}
 
                                 {item.status === "booked" &&
-                                    item.consultation_started &&
                                     !item.consultation_completed &&
                                     canJoinCall(slot?.date, slot?.time) && (
 
                                         <button
                                             onClick={() => setCallRoom(item.call_room || `consult-${item.id}`)}
-                                            className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                                            className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2"
                                         >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                             Join Video Consultation
                                         </button>
 

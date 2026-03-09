@@ -9,6 +9,7 @@ const ChatList = () => {
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState(null);
     const [selectedBooking, setSelectedBooking] = useState(null);
+    const [hideExpired, setHideExpired] = useState(true);
 
     useEffect(() => {
         initialize();
@@ -199,14 +200,23 @@ time
 
             {/* HEADER */}
 
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                    Messages
-                </h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        Messages
+                    </h1>
 
-                <p className="text-sm text-gray-500">
-                    Chat with your doctor or patient after booking
-                </p>
+                    <p className="text-sm text-gray-500">
+                        Chat with your doctor or patient after booking
+                    </p>
+                </div>
+
+                <button
+                    onClick={() => setHideExpired(!hideExpired)}
+                    className={`px-4 py-2 rounded-lg font-medium transition text-sm flex items-center gap-2 ${hideExpired ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                    {hideExpired ? "Show All Chats" : "Hide Expired Chats"}
+                </button>
             </div>
 
 
@@ -328,7 +338,7 @@ time
 
             {/* EXPIRED */}
 
-            {!loading && bookings.filter(b => b.isExpired).length > 0 && (
+            {!loading && !hideExpired && bookings.filter(b => b.isExpired).length > 0 && (
 
                 <div>
 

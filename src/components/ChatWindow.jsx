@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import toast from "react-hot-toast";
 import { Send, Paperclip, FileText, Clock, Mic, X, User } from "lucide-react";
+import AudioMessage from "./AudioMessage";
 
 const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
@@ -344,10 +345,16 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
             };
 
             mediaRecorderRef.current.onstop = async () => {
+                if (chunks.length === 0) {
+                    toast.error("No audio recorded");
+                    return;
+                }
 
+                // Supabase bucket now accepts audio/* - use audio/webm which is what Chrome/Edge records
                 const blob = new Blob(chunks, { type: "audio/webm" });
+                const ext = "webm";
 
-                const fileName = `audio-${Date.now()}.webm`;
+                const fileName = `audio-${Date.now()}.${ext}`;
 
                 const path = `chat/${booking.id}-${fileName}`;
 
@@ -357,7 +364,7 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
                 if (uploadError) {
                     console.error("Audio Upload Error:", uploadError);
-                    toast.error("Audio upload failed");
+                    toast.error("Audio upload failed: " + uploadError.message);
                     return;
                 }
 
@@ -365,7 +372,7 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
                     .from("chat-files")
                     .getPublicUrl(path);
 
-                const { data: msgData } = await supabase
+                const { data: msgData, error: dbError } = await supabase
                     .from("chat_messages")
                     .insert({
                         booking_id: booking.id,
@@ -375,6 +382,12 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
                     })
                     .select()
                     .single();
+
+                if (dbError) {
+                    console.error("Database Insert Error:", dbError);
+                    toast.error("Send failed: " + dbError.message);
+                    return;
+                }
 
                 if (msgData) {
                     setMessages(prev => prev.find(m => m.id === msgData.id) ? prev : [...prev, msgData]);
@@ -501,29 +514,38 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
                                     }`}>
 
                                     {isMine && !msg.deleted && editingMsgId !== msg.id && (
-                                        <div className="absolute top-2 -left-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <div className="absolute top-1 -left-9 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                             <button
                                                 onClick={() => setActiveDropdown(activeDropdown === msg.id ? null : msg.id)}
-                                                className="p-1 text-gray-400 hover:text-cyan-500 bg-white rounded-full shadow-md border border-gray-100"
+                                                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-cyan-500 bg-white border border-gray-200 rounded-full shadow-md transition-all hover:border-cyan-300"
                                             >
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
                                             </button>
 
                                             {activeDropdown === msg.id && (
-                                                <div className="absolute top-0 right-8 bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden min-w-[100px] z-20">
+                                                <div className="absolute bottom-8 right-0 bg-white shadow-2xl rounded-2xl border border-gray-100 overflow-hidden z-20 w-[140px]"
+                                                    style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+                                                >
                                                     {msg.content && (
                                                         <button
                                                             onClick={() => startEditing(msg.id, msg.content)}
-                                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                            className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 flex items-center gap-3 transition-colors font-medium"
                                                         >
-                                                            <FileText size={14} /> Edit
+                                                            <span className="w-7 h-7 bg-cyan-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                            </span>
+                                                            Edit
                                                         </button>
                                                     )}
+                                                    <div className="h-px bg-gray-100 mx-3" />
                                                     <button
                                                         onClick={() => { setActiveDropdown(null); deleteMessage(msg.id); }}
-                                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                        className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium"
                                                     >
-                                                        <X size={14} /> Delete
+                                                        <span className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+                                                        </span>
+                                                        Delete
                                                     </button>
                                                 </div>
                                             )}
@@ -566,7 +588,7 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
                                                     {msg.content && <p className="text-[15px] leading-relaxed mb-1">{msg.content}</p>}
 
                                                     {msg.audio_url &&
-                                                        <audio controls src={msg.audio_url} className="mt-2 h-10 w-full max-w-[240px]" />
+                                                        <AudioMessage src={msg.audio_url} isMine={isMine} />
                                                     }
 
                                                     {msg.file_url &&

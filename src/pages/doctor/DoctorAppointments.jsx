@@ -15,7 +15,11 @@ const DoctorAppointments = () => {
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(
+    new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+      .toISOString()
+      .split("T")[0]
+  );
 
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]);
@@ -25,7 +29,7 @@ const DoctorAppointments = () => {
 
   const [callRoom, setCallRoom] = useState(null);
   const [doctorName, setDoctorName] = useState("");
-  const dateStr = selectedDate.toISOString().split("T")[0];
+  const dateStr = selectedDate;
 
   useEffect(() => {
     loadBookings();
@@ -296,11 +300,28 @@ const DoctorAppointments = () => {
 
     <div style={{ maxWidth: 900 }}>
 
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>
-        Booked Patients
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+          Booked Patients
+        </h1>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #CBD5E0",
+            fontSize: 14,
+            outline: "none"
+          }}
+        />
+      </div>
 
       {loading && <p>Loading...</p>}
+      {!loading && bookings.length === 0 && (
+        <p style={{ color: "#718096", marginTop: 20 }}>No patients found for this date.</p>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
