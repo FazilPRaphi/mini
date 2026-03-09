@@ -1,11 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
 
-import Home from "./pages/Home";
-import About from "./pages/About";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import CompleteProfile from "./pages/CompleteProfile";
 
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
