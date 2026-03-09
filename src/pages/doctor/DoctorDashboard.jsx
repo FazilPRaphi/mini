@@ -128,7 +128,7 @@ const DoctorDashboard = () => {
 
       {/* SIDEBAR */}
       <aside style={{
-        width: 260, background: "#fff", display: "flex", flexDirection: "column",
+        width: 220, background: "#fff", display: "flex", flexDirection: "column",
         borderRight: "1px solid #E2E8F0", position: "fixed", top: 0, bottom: 0, zIndex: 50,
         transition: "transform 0.3s ease",
         transform: isMobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
@@ -221,10 +221,10 @@ const DoctorDashboard = () => {
 
       {/* MAIN */}
       <main style={{
-        flex: 1, padding: "32px", minHeight: "100vh",
+        flex: 1, minHeight: "100vh",
         transition: "margin 0.3s ease",
-      }} className="lg:ml-[260px] pt-24 lg:pt-8 bg-[#F7FAFC]">
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      }} className="lg:ml-[220px] pt-24 lg:pt-8 px-6 lg:px-4 pb-8 bg-[#F7FAFC]">
+        <div>
           {active === "dashboard" && <DoctorConsultation />}
           {active === "profile" && <Profile defaultEditing={false} />}
           {active === "availability" && <AppointmentCreator />}
@@ -237,12 +237,12 @@ const DoctorDashboard = () => {
 
       <style>{`
         @media (max-width: 1024px) {
-          .lg\\:ml-\\[260px\\] { margin-left: 0 !important; }
+          .lg\\:ml-\\[220px\\] { margin-left: 0 !important; }
           .lg\\:translate-x-0 { transform: translateX(-100%); }
           .lg\\:hidden { display: flex !important; }
         }
         @media (min-width: 1025px) {
-          .lg\\:ml-\\[260px\\] { margin-left: 260px !important; }
+          .lg\\:ml-\\[220px\\] { margin-left: 220px !important; }
           .lg\\:translate-x-0 { transform: translateX(0) !important; }
           .lg\\:hidden { display: none !important; }
         }

@@ -78,14 +78,14 @@ const AppointmentCreator = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1000 }}>
+    <div style={{ width: "100%", maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1A202C", margin: "0 0 4px" }}>Availability Management</h1>
         <p style={{ color: "#718096", fontSize: 14, margin: 0 }}>Configure and manage your clinical consultation hours.</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Create slot panel */}
         <div style={{ ...card }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>

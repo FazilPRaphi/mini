@@ -87,7 +87,7 @@ const Profile = ({ defaultEditing = false }) => {
   const initial = profile.full_name?.charAt(0)?.toUpperCase() || "D";
 
   return (
-    <div className="max-w-[860px] w-full px-4 md:px-0 mx-auto">
+    <div className="max-w-[1000px] w-full px-4 md:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
         <div>

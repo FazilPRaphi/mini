@@ -298,7 +298,7 @@ const DoctorAppointments = () => {
   return (
 
 
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ width: "100%", maxWidth: 1100 }}>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>

@@ -135,7 +135,7 @@ const DoctorConsultation = () => {
   const radius = 28, circ = 2 * Math.PI * radius;
 
   return (
-    <div className="max-w-[1200px] w-full px-4 md:px-0 mx-auto">
+    <div className="max-w-[1200px] w-full px-4 md:px-0">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 leading-tight">Doctor Dashboard</h1>

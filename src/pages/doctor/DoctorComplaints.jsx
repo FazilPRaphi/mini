@@ -70,7 +70,7 @@ const DoctorComplaints = () => {
     };
 
     return (
-        <div style={{ maxWidth: 800 }}>
+        <div style={{ width: "100%", maxWidth: 1000 }}>
             <div style={{ marginBottom: 28 }}>
                 <h1 style={{ fontSize: 26, fontWeight: 700, color: "#1A202C" }}>Submit a Complaint</h1>
                 <p style={{ color: "#718096", marginTop: 4, fontSize: 14 }}>
