@@ -1,151 +1,395 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
-import { Calendar, Clock, User, CheckCircle, ChevronRight, Users, Activity, Video } from "lucide-react";
+
+import {
+  Calendar,
+  Clock,
+  User,
+  CheckCircle,
+  ChevronRight,
+  Users,
+  Activity,
+  Video,
+  PlusCircle,
+  Trash2
+} from "lucide-react";
 
 const DoctorAppointments = () => {
   const [bookings, setBookings] = useState([]);
+  const [slots, setSlots] = useState([]);
+
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [maxPatients, setMaxPatients] = useState(5);
+
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ totalActive: 0, pending: 0, completed: 0 });
+  const [creating, setCreating] = useState(false);
+
+  const [stats, setStats] = useState({
+    totalActive: 0,
+    pending: 0,
+    completed: 0
+  });
 
   const loadBookings = async () => {
-    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) return;
 
     const { data, error } = await supabase
       .from("appointment_bookings")
       .select(`
-                id,
-                doctor_id,
-                booked_at,
-                status,
-                queue_position,
-                consultation_started,
-                consultation_completed,
-                call_room,
-                patient_id,
-                appointment_id,
-                appointments(date, time),
-                profiles:patient_id(full_name, age, gender)
-            `)
+        id,
+        doctor_id,
+        booked_at,
+        status,
+        consultation_completed,
+        call_room,
+        patient_id,
+        appointments(date,time),
+        profiles:patient_id(full_name,age,gender)
+      `)
       .eq("doctor_id", user.id)
       .order("booked_at", { ascending: false });
 
     if (error) {
       toast.error(error.message);
-    } else {
-      setBookings(data || []);
-      const active = data?.filter(b => b.status === "booked" || b.status === "Upcoming").length || 0;
-      const comp = data?.filter(b => b.status === "Completed" || b.consultation_completed).length || 0;
-      setStats({ totalActive: active, pending: active, completed: comp });
+      return;
     }
-    setLoading(false);
+
+    setBookings(data || []);
+
+    const active =
+      data?.filter(
+        b => b.status === "booked" || b.status === "Upcoming"
+      ).length || 0;
+
+    const comp =
+      data?.filter(
+        b => b.status === "Completed" || b.consultation_completed
+      ).length || 0;
+
+    setStats({
+      totalActive: active,
+      pending: active,
+      completed: comp
+    });
   };
 
-  useEffect(() => { loadBookings(); }, []);
+  const loadSlots = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const formatTime = (timeStr) => {
-    if (!timeStr) return "";
-    const [h, m] = timeStr.split(":");
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data } = await supabase
+      .from("appointments")
+      .select("*, appointment_bookings(id)")
+      .eq("doctor_id", user.id)
+      .gte("date", today)
+      .order("date", { ascending: true });
+
+    setSlots(data || []);
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await loadBookings();
+      await loadSlots();
+      setLoading(false);
+    };
+
+    init();
+  }, []);
+
+  const createSlot = async () => {
+    if (!date) return toast.error("Select a date");
+    if (!startTime) return toast.error("Enter start time");
+
+    setCreating(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const formattedTime = startTime + ":00";
+
+    const { data: existing } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("doctor_id", user.id)
+      .eq("date", date)
+      .eq("time", formattedTime)
+      .maybeSingle();
+
+    if (existing) {
+      setCreating(false);
+      return toast.error("Slot already exists");
+    }
+
+    const { error } = await supabase
+      .from("appointments")
+      .insert({
+        doctor_id: user.id,
+        date,
+        time: formattedTime,
+        max_patients: maxPatients
+      });
+
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Slot created");
+      loadSlots();
+    }
+
+    setCreating(false);
+  };
+
+  const deleteSlot = async id => {
+    if (!confirm("Delete slot?")) return;
+
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", id);
+
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Slot deleted");
+      loadSlots();
+    }
+  };
+
+  const formatTime = time => {
+    if (!time) return "";
+
+    const [h, m] = time.split(":");
     const hour = parseInt(h);
+
     const ampm = hour >= 12 ? "PM" : "AM";
     const h12 = hour % 12 || 12;
+
     return `${h12}:${m} ${ampm}`;
   };
 
   return (
-    <div className="h-full flex flex-col font-redhat animate-fadeIn overflow-hidden">
+    <div className="h-full flex flex-col animate-fadeIn overflow-hidden">
+
+      {/* HEADER */}
+
       <header className="mb-8 flex justify-between items-end">
+
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Clinical Registry</h1>
-          <p className="text-gray-500 font-medium">Detailed log of all patient appointments and consultation history.</p>
+          <h1 className="text-3xl font-black text-gray-900">
+            Clinical Registry
+          </h1>
+
+          <p className="text-gray-500">
+            Detailed log of patient consultations.
+          </p>
         </div>
-        <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Load</span>
-            <span className="text-sm font-black text-[#0BC5EA] uppercase tracking-tighter">{stats.totalActive} Patients in Queue</span>
+
+        <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow border">
+
+          <div>
+            <div className="text-xs text-gray-400 uppercase font-bold">
+              Live Load
+            </div>
+
+            <div className="text-sm font-black text-cyan-600">
+              {stats.totalActive} Patients in Queue
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center text-[#0BC5EA]">
-            <Activity size={20} className="animate-pulse" />
-          </div>
+
+          <Activity size={20} className="text-cyan-500 animate-pulse" />
+
         </div>
+
       </header>
 
-      {/* Stats Row */}
+      {/* STATS */}
+
       <div className="grid grid-cols-3 gap-6 mb-8">
-        {[
-          { label: "Pending", val: stats.pending, color: "text-orange-500", bg: "bg-orange-50", icon: Clock },
-          { label: "Completed", val: stats.completed, color: "text-green-500", bg: "bg-green-50", icon: CheckCircle },
-          { label: "Revenue Est.", val: `$${stats.completed * 50}`, color: "text-purple-500", bg: "bg-purple-50", icon: Activity },
-        ].map((s, i) => (
-          <div key={i} className="seba-card p-4 flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}>
-              <s.icon size={20} />
-            </div>
-            <div>
-              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
-              <div className="text-xl font-black text-gray-900">{s.val}</div>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      <div className="seba-card flex-1 p-8 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center text-[#0BC5EA] shadow-inner">
-              <Users size={24} />
-            </div>
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Full Registry</h2>
+        <div className="seba-card p-4 flex gap-4 items-center">
+          <Clock className="text-orange-500" />
+          <div>
+            <div className="text-xs text-gray-400">Pending</div>
+            <div className="text-xl font-bold">{stats.pending}</div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
-          {loading ? (
-            <div className="h-full flex items-center justify-center text-gray-400 font-bold uppercase tracking-widest text-xs animate-pulse">Syncing Registry...</div>
-          ) : bookings.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20">
-              <Calendar size={48} className="mb-4" />
-              <p className="font-bold uppercase tracking-widest text-xs">No records found</p>
+        <div className="seba-card p-4 flex gap-4 items-center">
+          <CheckCircle className="text-green-500" />
+          <div>
+            <div className="text-xs text-gray-400">Completed</div>
+            <div className="text-xl font-bold">{stats.completed}</div>
+          </div>
+        </div>
+
+        <div className="seba-card p-4 flex gap-4 items-center">
+          <Activity className="text-purple-500" />
+          <div>
+            <div className="text-xs text-gray-400">Revenue</div>
+            <div className="text-xl font-bold">
+              ${stats.completed * 50}
             </div>
-          ) : (
-            bookings.map(b => (
-              <div key={b.id} className="group flex items-center gap-6 p-5 bg-white border border-gray-100 rounded-3xl hover:border-cyan-200 hover:shadow-xl hover:shadow-cyan-100/20 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-cyan-50 group-hover:text-cyan-500 transition-colors font-black text-lg">
-                  {b.profiles?.full_name?.charAt(0)}
-                </div>
+          </div>
+        </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="font-black text-gray-900 truncate">{b.profiles?.full_name}</h3>
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${b.status === "Completed" || b.consultation_completed ? "bg-green-100 text-green-700" : "bg-cyan-100 text-cyan-700"
-                      }`}>
-                      {b.status === "booked" ? "Upcoming" : b.status}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-[10px] font-black text-gray-400 uppercase tracking-[1px]">
-                    <span className="flex items-center gap-1.5"><Calendar size={12} className="text-gray-300" /> {b.appointments?.date}</span>
-                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-gray-300" /> {formatTime(b.appointments?.time)}</span>
-                    <span className="flex items-center gap-1.5"><User size={12} className="text-gray-300" /> {b.profiles?.age}y • {b.profiles?.gender}</span>
-                  </div>
-                </div>
+      </div>
 
-                <div className="flex items-center gap-3">
-                  {b.call_room && (
-                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500 border border-green-100">
-                      <Video size={18} />
+      {/* MAIN GRID */}
+
+      <div className="grid grid-cols-2 gap-8 flex-1 overflow-hidden">
+
+        {/* SLOT CREATOR */}
+
+        <div className="seba-card p-8 flex flex-col gap-6">
+
+          <h2 className="font-black text-lg flex items-center gap-2">
+            <PlusCircle size={20} /> Create Slot
+          </h2>
+
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="border rounded-xl p-3"
+          />
+
+          <input
+            type="time"
+            value={startTime}
+            onChange={e => setStartTime(e.target.value)}
+            className="border rounded-xl p-3"
+          />
+
+          <input
+            type="number"
+            value={maxPatients}
+            min={1}
+            onChange={e => setMaxPatients(Number(e.target.value))}
+            className="border rounded-xl p-3"
+          />
+
+          <button
+            onClick={createSlot}
+            disabled={creating}
+            className="bg-cyan-500 text-white py-3 rounded-xl font-bold"
+          >
+            {creating ? "Creating..." : "Add Slot"}
+          </button>
+
+          <div className="space-y-3 overflow-y-auto">
+
+            {slots.map(slot => {
+
+              const booked =
+                slot.appointment_bookings?.length || 0;
+
+              return (
+                <div
+                  key={slot.id}
+                  className="flex items-center justify-between border rounded-xl p-3"
+                >
+
+                  <div>
+                    <div className="font-bold">
+                      {slot.date}
                     </div>
-                  )}
-                  <div className="p-2 text-gray-200 group-hover:text-cyan-200 transition-colors">
-                    <ChevronRight size={20} />
+
+                    <div className="text-sm text-gray-500">
+                      {formatTime(slot.time)}
+                    </div>
+
+                    <div className="text-xs text-gray-400">
+                      {booked}/{slot.max_patients} booked
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => deleteSlot(slot.id)}
+                    className="text-red-500"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+
                 </div>
-              </div>
-            ))
-          )}
+              );
+            })}
+
+          </div>
+
         </div>
+
+        {/* BOOKING REGISTRY */}
+
+        <div className="seba-card p-8 flex flex-col overflow-hidden">
+
+          <h2 className="font-black text-lg mb-6 flex gap-2 items-center">
+            <Users size={20} /> Patient Registry
+          </h2>
+
+          <div className="flex-1 overflow-y-auto space-y-4">
+
+            {loading ? (
+              <div className="text-center text-gray-400">
+                Loading...
+              </div>
+            ) : bookings.length === 0 ? (
+              <div className="text-center text-gray-400">
+                No bookings
+              </div>
+            ) : (
+              bookings.map(b => (
+                <div
+                  key={b.id}
+                  className="flex items-center gap-6 p-4 border rounded-xl hover:shadow"
+                >
+
+                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    {b.profiles?.full_name?.charAt(0)}
+                  </div>
+
+                  <div className="flex-1">
+
+                    <div className="font-bold">
+                      {b.profiles?.full_name}
+                    </div>
+
+                    <div className="text-sm text-gray-400 flex gap-4">
+
+                      <span>
+                        {b.appointments?.date}
+                      </span>
+
+                      <span>
+                        {formatTime(b.appointments?.time)}
+                      </span>
+
+                      <span>
+                        {b.profiles?.age}y
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                  {b.call_room && (
+                    <Video className="text-green-500" />
+                  )}
+
+                  <ChevronRight className="text-gray-300" />
+
+                </div>
+              ))
+            )}
+
+          </div>
+
+        </div>
+
       </div>
+
     </div>
   );
 };
