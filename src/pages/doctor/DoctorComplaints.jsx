@@ -1,128 +1,176 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
-import { ShieldAlert, ChevronDown, ChevronUp, Clock, User, CheckCircle, AlertCircle, Search } from "lucide-react";
+
+const STATUS_COLORS = {
+    open: { bg: "#FEF9C3", color: "#92400E" },
+    resolved: { bg: "#DCFCE7", color: "#166534" },
+};
 
 const DoctorComplaints = () => {
+    const [subject, setSubject] = useState("");
+    const [message, setMessage] = useState("");
+    const [submitting, setSubmitting] = useState(false);
     const [complaints, setComplaints] = useState([]);
-    const [pageLoading, setPageLoading] = useState(true);
-    const [expandedId, setExpandedId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
 
-    useEffect(() => {
-        const fetchComplaints = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { setPageLoading(false); return; }
-            const { data, error } = await supabase
-                .from("complaints")
-                .select("*, profiles!complaints_patient_id_fkey(full_name)")
-                .eq("doctor_id", user.id)
-                .order("created_at", { ascending: false });
+    const fetchComplaints = async () => {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
-            if (!error) setComplaints(data || []);
-            setPageLoading(false);
-        };
-        fetchComplaints();
-    }, []);
+        const { data, error } = await supabase
+            .from("complaints")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
 
-    const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+        if (error) toast.error(error.message);
+        else setComplaints(data || []);
+        setLoading(false);
+    };
 
-    const filteredComplaints = complaints.filter(c =>
-        c.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.subject?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => { fetchComplaints(); }, []);
 
-    if (pageLoading) return <div className="p-10 text-gray-400 font-bold animate-pulse">Scanning incident reports...</div>;
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!subject.trim() || !message.trim()) {
+            toast.error("Please fill in both subject and message.");
+            return;
+        }
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setSubmitting(false); return; }
+
+        const { error } = await supabase.from("complaints").insert({
+            user_id: user.id,
+            user_role: "doctor",
+            subject: subject.trim(),
+            message: message.trim(),
+        });
+
+        if (error) {
+            toast.error(error.message);
+        } else {
+            toast.success("Complaint submitted successfully!");
+            setSubject("");
+            setMessage("");
+            fetchComplaints();
+        }
+        setSubmitting(false);
+    };
+
+    const card = {
+        background: "#fff",
+        borderRadius: 16,
+        padding: "28px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+        border: "1px solid #E2E8F0",
+    };
 
     return (
-        <div className="h-full flex flex-col font-redhat animate-fadeIn overflow-hidden">
-            <header className="mb-8 flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Incident Management</h1>
-                    <p className="text-gray-500 font-medium">Review and resolve patient feedback and complaints.</p>
-                </div>
-                <div className="flex items-center gap-3 bg-red-50 px-4 py-2 rounded-2xl border border-red-100">
-                    <ShieldAlert size={18} className="text-red-500" />
-                    <span className="text-sm font-black text-red-700 uppercase tracking-widest">{complaints.length} Reported Events</span>
-                </div>
-            </header>
+        <div style={{ width: "100%", maxWidth: 1000 }}>
+            <div style={{ marginBottom: 28 }}>
+                <h1 style={{ fontSize: 26, fontWeight: 700, color: "#1A202C" }}>Submit a Complaint</h1>
+                <p style={{ color: "#718096", marginTop: 4, fontSize: 14 }}>
+                    Report an issue or concern and we'll review it promptly.
+                </p>
+            </div>
 
-            <div className="seba-card flex-1 p-8 flex flex-col overflow-hidden">
-                <div className="relative mb-8">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            {/* FORM */}
+            <form onSubmit={handleSubmit} style={{ ...card, marginBottom: 32, maxWidth: 640 }}>
+                <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#4A5568", marginBottom: 6 }}>
+                        Subject
+                    </label>
                     <input
                         type="text"
-                        placeholder="Filter incidents by patient or subject..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold outline-none ring-0 focus:ring-2 focus:ring-[#9B51E0] transition-all shadow-inner"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder="Brief description of your issue"
+                        style={{
+                            width: "100%", border: "1px solid #CBD5E0", borderRadius: 10,
+                            padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box",
+                        }}
                     />
                 </div>
-
-                <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
-                    {filteredComplaints.map(c => (
-                        <div key={c.id} className="group border border-gray-100 rounded-3xl overflow-hidden transition-all hover:border-[#9B51E0]/30 hover:shadow-xl hover:shadow-purple-100/20">
-                            <button
-                                onClick={() => toggleExpand(c.id)}
-                                className={`w-full flex items-center justify-between p-6 transition-colors ${expandedId === c.id ? "bg-purple-50/50" : "bg-white"}`}
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm transition-transform group-hover:scale-110 ${c.status === "Resolved" ? "bg-green-50 border-green-100 text-green-500" : "bg-orange-50 border-orange-100 text-orange-500"
-                                        }`}>
-                                        {c.status === "Resolved" ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <h3 className="font-black text-gray-900 truncate max-w-xs">{c.subject}</h3>
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${c.status === "Resolved" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                                                }`}>
-                                                {c.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                            <span className="flex items-center gap-1.5"><User size={12} className="text-gray-300" /> {c.profiles?.full_name}</span>
-                                            <span className="flex items-center gap-1.5"><Clock size={12} className="text-gray-300" /> {new Date(c.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className={`p-2 rounded-xl border transition-all ${expandedId === c.id ? "bg-[#1A202C] text-white border-transparent" : "bg-gray-50 text-gray-400 border-gray-100"}`}>
-                                    {expandedId === c.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                </div>
-                            </button>
-
-                            {expandedId === c.id && (
-                                <div className="p-8 bg-gray-50/50 border-t border-gray-100 animate-fadeIn">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div>
-                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Detailed Description</h4>
-                                            <div className="bg-white p-6 rounded-2xl border border-gray-100 text-sm font-medium text-gray-700 leading-relaxed shadow-sm">
-                                                {c.description}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col justify-end gap-3">
-                                            <button className="w-full py-4 bg-[#1A202C] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
-                                                Mark as Refined
-                                            </button>
-                                            <button className="w-full py-4 bg-white border border-gray-100 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                                Discuss with Patient
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-
-                    {filteredComplaints.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center py-20 text-gray-300 opacity-50">
-                            <ShieldAlert size={64} className="mb-4" />
-                            <p className="font-bold uppercase tracking-widest text-xs">Clear history. No incidents to report.</p>
-                        </div>
-                    )}
+                <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#4A5568", marginBottom: 6 }}>
+                        Message
+                    </label>
+                    <textarea
+                        rows={5}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Describe your complaint in detail..."
+                        style={{
+                            width: "100%", border: "1px solid #CBD5E0", borderRadius: 10,
+                            padding: "10px 14px", fontSize: 14, outline: "none", resize: "none", boxSizing: "border-box",
+                        }}
+                    />
                 </div>
+                <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{
+                        background: submitting ? "#90CDF4" : "#0BC5EA",
+                        color: "#fff", border: "none", borderRadius: 10,
+                        padding: "11px 28px", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                    }}
+                >
+                    {submitting ? "Submitting..." : "Submit Complaint"}
+                </button>
+            </form>
+
+            {/* PAST COMPLAINTS */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1A202C", margin: 0 }}>Your Past Complaints</h2>
+                <button
+                    onClick={() => setShowHistory(o => !o)}
+                    style={{
+                        fontSize: 13, fontWeight: 600, padding: "8px 18px",
+                        borderRadius: 10, border: "1px solid #E2E8F0",
+                        background: showHistory ? "#EBF8FF" : "#fff",
+                        color: showHistory ? "#0BC5EA" : "#4A5568",
+                        cursor: "pointer",
+                    }}
+                >
+                    {showHistory ? "Hide" : `Show (${complaints.length})`}
+                </button>
             </div>
+            {showHistory && (
+                loading ? (
+                    <p style={{ color: "#A0AEC0" }}>Loading...</p>
+                ) : complaints.length === 0 ? (
+                    <p style={{ color: "#A0AEC0" }}>You haven't submitted any complaints yet.</p>
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {complaints.map((c) => (
+                            <div key={c.id} style={card}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 12 }}>
+                                    <span style={{ fontWeight: 600, color: "#1A202C", fontSize: 15 }}>{c.subject}</span>
+                                    <span style={{
+                                        fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap",
+                                        background: STATUS_COLORS[c.status]?.bg || "#F3F4F6",
+                                        color: STATUS_COLORS[c.status]?.color || "#374151",
+                                    }}>
+                                        {c.status?.toUpperCase()}
+                                    </span>
+                                </div>
+                                <p style={{ fontSize: 14, color: "#4A5568", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{c.message}</p>
+                                <p style={{ fontSize: 12, color: "#A0AEC0", marginTop: 12 }}>{new Date(c.created_at).toLocaleString()}</p>
+                            </div>
+                        ))}
+                    </div>
+                )
+            )}
         </div>
     );
 };
 
 export default DoctorComplaints;
+
+
+
+

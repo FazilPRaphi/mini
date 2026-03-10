@@ -200,7 +200,7 @@ const DoctorDashboardHome = ({ onNavigate }) => {
                         <div className="space-y-4 overflow-y-auto no-scrollbar pr-2">
                             {[
                                 { title: "Completed", value: stats.completed, color: "text-[#27AE60]", bg: "bg-[#E8F5E9]" },
-                                { title: "Appoint. today", value: stats.appointmentsToday, color: "text-[#0BC5EA]", bg: "bg-cyan-50" },
+
                             ].map((metric, i) => (
                                 <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50/50 border border-gray-100/50">
                                     <span className="text-sm font-semibold text-gray-500">{metric.title}</span>
