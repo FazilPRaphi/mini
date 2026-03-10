@@ -1,397 +1,153 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
-import VideoCall from "../../components/Videocall";
-
-const card = { background: "#fff", borderRadius: 16, boxShadow: "0 1px 6px rgba(0,0,0,.07)", padding: 24 };
-
-const STATUS_STYLES = {
-  upcoming: { background: "#FEFCBF", color: "#D69E2E", label: "UPCOMING" },
-  "checked-in": { background: "#C6F6D5", color: "#276749", label: "CHECKED-IN" },
-  completed: { background: "#E2E8F0", color: "#718096", label: "COMPLETED" },
-};
+import { Calendar, Clock, User, CheckCircle, ChevronRight, Users, Activity, Video } from "lucide-react";
 
 const DoctorAppointments = () => {
-
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
-      .toISOString()
-      .split("T")[0]
-  );
-
-  const [selected, setSelected] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [medicines, setMedicines] = useState([]);
-
-  const [callRoom, setCallRoom] = useState(null);
-  const [doctorName, setDoctorName] = useState("");
-  const dateStr = selectedDate;
-
-  useEffect(() => {
-    loadBookings();
-  }, [selectedDate]);
-
-  useEffect(() => {
-
-
-    const channel = supabase
-      .channel("doctor-appointments")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "appointment_bookings"
-        },
-        () => {
-          loadBookings();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-
-
-  }, []);
-
-  /* LOAD BOOKINGS */
+  const [stats, setStats] = useState({ totalActive: 0, pending: 0, completed: 0 });
 
   const loadBookings = async () => {
-
     setLoading(true);
-
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-
-    setDoctorName(profile?.full_name || "Doctor");
+    if (!user) { setLoading(false); return; }
 
     const { data, error } = await supabase
       .from("appointment_bookings")
       .select(`
-      id,
-      doctor_id,
-      booked_at,
-      queue_position,
-      consultation_started,
-      consultation_completed,
-      call_room,
-      patient_id,
-      appointment_id,
-      appointments(
-        date,
-        time
-      ),
-      profiles:patient_id(
-        full_name,
-        age,
-        gender
-      )
-    `)
+                id,
+                doctor_id,
+                booked_at,
+                status,
+                queue_position,
+                consultation_started,
+                consultation_completed,
+                call_room,
+                patient_id,
+                appointment_id,
+                appointments(date, time),
+                profiles:patient_id(full_name, age, gender)
+            `)
       .eq("doctor_id", user.id)
-      .eq("status", "booked")
-      .order("queue_position", { ascending: true });
+      .order("booked_at", { ascending: false });
 
     if (error) {
       toast.error(error.message);
-      setLoading(false);
-      return;
+    } else {
+      setBookings(data || []);
+      const active = data?.filter(b => b.status === "booked" || b.status === "Upcoming").length || 0;
+      const comp = data?.filter(b => b.status === "Completed" || b.consultation_completed).length || 0;
+      setStats({ totalActive: active, pending: active, completed: comp });
     }
-
-    const filtered = (data || []).filter(
-      b => b.appointments?.date === dateStr
-    );
-
-    setBookings(filtered);
     setLoading(false);
   };
 
-  /* START CONSULTATION */
+  useEffect(() => { loadBookings(); }, []);
 
-  const startConsultation = async (booking) => {
-
-    const { data: active } = await supabase
-      .from("appointment_bookings")
-      .select("id")
-      .eq("consultation_started", true)
-      .maybeSingle();
-
-    if (active) {
-      toast.error("Another consultation is already running");
-      return;
-    }
-
-    await supabase
-      .from("appointment_bookings")
-      .update({ consultation_started: true })
-      .eq("id", booking.id);
-
-    toast.success("Consultation started");
-
-    loadBookings();
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
   };
-
-  /* END CONSULTATION */
-
-  const endConsultation = async (booking) => {
-
-    await supabase
-      .from("appointment_bookings")
-      .update({
-        consultation_started: false,
-        consultation_completed: true
-      })
-      .eq("id", booking.id);
-
-    toast.success("Consultation completed");
-
-    loadBookings();
-
-
-  };
-
-  /* OPEN PATIENT */
-
-  const openPatient = async (booking) => {
-
-
-    setSelected(booking);
-    setTitle("");
-    setDescription("");
-    setMedicines([]);
-
-    const { data } = await supabase
-      .from("medical_records")
-      .select(`
-        id,
-        title,
-        description,
-        created_at,
-        prescriptions(medicine_name, dosage, frequency, duration)
-      `)
-      .eq("patient_id", booking.patient_id)
-      .order("created_at", { ascending: false });
-
-    setHistory(data || []);
-
-
-  };
-
-  const addMedicine = () => {
-
-    setMedicines([
-      ...medicines,
-      { medicine_name: "", dosage: "", frequency: "", duration: "" }
-    ]);
-
-
-  };
-
-  const updateMedicine = (i, f, v) => {
-
-
-    const copy = [...medicines];
-    copy[i][f] = v;
-    setMedicines(copy);
-
-
-  };
-
-  const saveConsultation = async () => {
-
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!title) return toast.error("Title required");
-
-    const { data: record } = await supabase
-      .from("medical_records")
-      .insert({
-        patient_id: selected.patient_id,
-        doctor_id: user.id,
-        appointment_booking_id: selected.id,
-        title,
-        description
-      })
-      .select()
-      .single();
-
-    if (medicines.length > 0) {
-
-      await supabase
-        .from("prescriptions")
-        .insert(
-          medicines.map(m => ({
-            ...m,
-            record_id: record.id
-          }))
-        );
-
-    }
-
-    toast.success("Consultation saved");
-
-    openPatient(selected);
-
-
-  };
-
-  /* STATUS */
-
-  const getStatus = (b) => {
-
-    if (b.consultation_completed) return "completed";
-    if (b.consultation_started) return "checked-in";
-
-    return "upcoming";
-
-
-  };
-
-  if (callRoom) {
-
-    return (
-      <div style={{ maxWidth: 900 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Video Consultation</h1>
-          <button onClick={() => setCallRoom(null)}>Leave Call</button>
-        </div>
-        <VideoCall
-          roomName={callRoom}
-          userName={`Dr. ${doctorName}`}
-          onLeave={() => setCallRoom(null)}
-        />
-      </div>
-    );
-
-  }
-
-  if (selected) {
-
-
-    const p = selected.profiles;
-
-    return (
-      <div style={{ maxWidth: 900 }}>
-        <button onClick={() => setSelected(null)}>← Back to Patients</button>
-      </div>
-    );
-
-
-  }
 
   return (
+    <div className="h-full flex flex-col font-redhat animate-fadeIn overflow-hidden">
+      <header className="mb-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Clinical Registry</h1>
+          <p className="text-gray-500 font-medium">Detailed log of all patient appointments and consultation history.</p>
+        </div>
+        <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Load</span>
+            <span className="text-sm font-black text-[#0BC5EA] uppercase tracking-tighter">{stats.totalActive} Patients in Queue</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center text-[#0BC5EA]">
+            <Activity size={20} className="animate-pulse" />
+          </div>
+        </div>
+      </header>
 
-
-    <div style={{ width: "100%", maxWidth: 1100 }}>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
-          Booked Patients
-        </h1>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #CBD5E0",
-            fontSize: 14,
-            outline: "none"
-          }}
-        />
-      </div>
-
-      {loading && <p>Loading...</p>}
-      {!loading && bookings.length === 0 && (
-        <p style={{ color: "#718096", marginTop: 20 }}>No patients found for this date.</p>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-        {bookings.map(b => {
-
-          const status = getStatus(b);
-          const style = STATUS_STYLES[status];
-
-          const name = b.profiles?.full_name || "Patient";
-          const time = b.appointments?.time?.slice(0, 5);
-
-          return (
-
-            <div key={b.id} style={{ ...card, display: "flex", alignItems: "center", gap: 16 }}>
-
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 700 }}>
-                  {name}
-                </p>
-
-                <p style={{ fontSize: 13, color: "#718096" }}>
-                  🕐 {time} | Queue #{b.queue_position}
-                </p>
-              </div>
-
-              <span style={{
-                ...style,
-                padding: "4px 12px",
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700
-              }}>
-                {style.label}
-              </span>
-
-              {!b.consultation_started && !b.consultation_completed && (
-                <button onClick={() => startConsultation(b)}>
-                  Start Consultation
-                </button>
-              )}
-
-              {b.consultation_started && (
-                <button onClick={() => endConsultation(b)}>
-                  End Consultation
-                </button>
-              )}
-
-              {b.consultation_started && !b.consultation_completed && (
-                <button onClick={() => setCallRoom(b.call_room || `consult-${b.id}`)} style={{ marginLeft: 8, background: "#48BB78", color: "white", padding: "4px 12px", borderRadius: 4, border: "none" }}>
-                  Join Video Call
-                </button>
-              )}
-
-              <button onClick={() => openPatient(b)}>
-                Open Patient
-              </button>
-
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        {[
+          { label: "Pending", val: stats.pending, color: "text-orange-500", bg: "bg-orange-50", icon: Clock },
+          { label: "Completed", val: stats.completed, color: "text-green-500", bg: "bg-green-50", icon: CheckCircle },
+          { label: "Revenue Est.", val: `$${stats.completed * 50}`, color: "text-purple-500", bg: "bg-purple-50", icon: Activity },
+        ].map((s, i) => (
+          <div key={i} className="seba-card p-4 flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center ${s.color}`}>
+              <s.icon size={20} />
             </div>
-
-          );
-
-        })}
-
+            <div>
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+              <div className="text-xl font-black text-gray-900">{s.val}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
+      <div className="seba-card flex-1 p-8 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center text-[#0BC5EA] shadow-inner">
+              <Users size={24} />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Full Registry</h2>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
+          {loading ? (
+            <div className="h-full flex items-center justify-center text-gray-400 font-bold uppercase tracking-widest text-xs animate-pulse">Syncing Registry...</div>
+          ) : bookings.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20">
+              <Calendar size={48} className="mb-4" />
+              <p className="font-bold uppercase tracking-widest text-xs">No records found</p>
+            </div>
+          ) : (
+            bookings.map(b => (
+              <div key={b.id} className="group flex items-center gap-6 p-5 bg-white border border-gray-100 rounded-3xl hover:border-cyan-200 hover:shadow-xl hover:shadow-cyan-100/20 transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-cyan-50 group-hover:text-cyan-500 transition-colors font-black text-lg">
+                  {b.profiles?.full_name?.charAt(0)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="font-black text-gray-900 truncate">{b.profiles?.full_name}</h3>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${b.status === "Completed" || b.consultation_completed ? "bg-green-100 text-green-700" : "bg-cyan-100 text-cyan-700"
+                      }`}>
+                      {b.status === "booked" ? "Upcoming" : b.status}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-[10px] font-black text-gray-400 uppercase tracking-[1px]">
+                    <span className="flex items-center gap-1.5"><Calendar size={12} className="text-gray-300" /> {b.appointments?.date}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-gray-300" /> {formatTime(b.appointments?.time)}</span>
+                    <span className="flex items-center gap-1.5"><User size={12} className="text-gray-300" /> {b.profiles?.age}y • {b.profiles?.gender}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {b.call_room && (
+                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500 border border-green-100">
+                      <Video size={18} />
+                    </div>
+                  )}
+                  <div className="p-2 text-gray-200 group-hover:text-cyan-200 transition-colors">
+                    <ChevronRight size={20} />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
-
-
   );
-
 };
 
 export default DoctorAppointments;

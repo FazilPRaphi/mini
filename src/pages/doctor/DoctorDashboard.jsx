@@ -5,59 +5,19 @@ import DoctorAppointments from "./DoctorAppointments";
 import DoctorConsultation from "./DoctorConsultation";
 import ChatList from "../../components/ChatList";
 import DoctorComplaints from "./DoctorComplaints";
+import DoctorDashboardHome from "./DoctorDashboardHome";
 import NotificationBell from "../../components/NotificationBell";
 import { supabase } from "../../supabaseClient";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, Users, Calendar, Clock, MessageSquare, ShieldAlert, UserCircle } from "lucide-react";
 
-/* ── Icon components defined FIRST to avoid temporal dead zone ── */
-const DashboardIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-  </svg>
-);
-const PatientsIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-  </svg>
-);
-const ConsultIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
-  </svg>
-);
-const CalIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
-  </svg>
-);
-const ChatIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-  </svg>
-);
-const PersonIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-  </svg>
-);
-const ComplaintIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-  </svg>
-);
-
-/* ── NAV defined AFTER all icon components ── */
 const NAV = [
-  { key: "dashboard", label: "Dashboard", icon: DashboardIcon },
-  { key: "appointments", label: "Booked Patients", icon: PatientsIcon },
-  { key: "prescriptions", label: "Consultations", icon: ConsultIcon },
-  { key: "availability", label: "Availability", icon: CalIcon },
-  { key: "chats", label: "Chats", icon: ChatIcon },
-  { key: "complaints", label: "Complaints", icon: ComplaintIcon },
-  { key: "profile", label: "Profile", icon: PersonIcon },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "appointments", label: "Booked Patients", icon: Users },
+  { key: "prescriptions", label: "Consultations", icon: Clock },
+  { key: "availability", label: "Availability", icon: Calendar },
+  { key: "chats", label: "Chats", icon: MessageSquare },
+  { key: "complaints", label: "Complaints", icon: ShieldAlert },
+  { key: "profile", label: "Profile", icon: UserCircle },
 ];
 
 const DoctorDashboard = () => {
@@ -94,22 +54,18 @@ const DoctorDashboard = () => {
   const initial = doctorProfile.full_name?.charAt(0)?.toUpperCase() || "D";
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#F7FAFC", fontFamily: "'Inter', system-ui, sans-serif", position: "relative" }}>
+    <div className="flex h-screen w-screen bg-[#F7FAFC] font-redhat text-[#333] overflow-hidden relative">
 
       {/* MOBILE HEADER */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, height: 64,
-        background: "#fff", borderBottom: "1px solid #E2E8F0", zIndex: 40,
-        display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px",
-      }} className="lg:hidden">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-100 z-40 flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#4A5568", padding: 8, borderRadius: 8 }}
+            className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg transition-colors"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <span style={{ fontWeight: 800, fontSize: 18, color: "#0BC5EA" }}>HealthSync</span>
+          <span className="font-extrabold text-xl text-[#0BC5EA] tracking-tight">HealthSync</span>
         </div>
         <NotificationBell />
       </div>
@@ -118,100 +74,70 @@ const DoctorDashboard = () => {
       {isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 45,
-            backdropFilter: "blur(4px)",
-          }}
-          className="lg:hidden"
+          className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-45"
         />
       )}
 
       {/* SIDEBAR */}
-      <aside style={{
-        width: 220, background: "#fff", display: "flex", flexDirection: "column",
-        borderRight: "1px solid #E2E8F0", position: "fixed", top: 0, bottom: 0, zIndex: 50,
-        transition: "transform 0.3s ease",
-        transform: isMobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
-        left: 0,
-      }} className="lg:translate-x-0">
+      <aside className={`
+        fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100 z-50 flex flex-col
+        transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+        lg:translate-x-0 lg:static
+      `}>
         {/* Logo */}
-        <div style={{ padding: "32px 24px 20px", borderBottom: "1px solid #F7FAFC" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, background: "linear-gradient(135deg,#0BC5EA,#00B5D8)",
-                borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(11, 197, 234, 0.2)",
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
-                  <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="2.5" fill="#fff" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 17, color: "#1A202C", lineHeight: 1.1 }}>HealthSync</div>
-                <div style={{ fontSize: 10, color: "#0BC5EA", fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", marginTop: 2 }}>Medical Portal</div>
-              </div>
+        <div className="p-8 pb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#0BC5EA] to-[#00B5D8] rounded-xl flex items-center justify-center shadow-lg shadow-cyan-100">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
+                <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="2.5" fill="#fff" />
+              </svg>
             </div>
-            <div className="hidden lg:block">
-              <NotificationBell />
+            <div>
+              <div className="font-black text-lg text-gray-900 leading-none">HealthSync</div>
+              <div className="text-[10px] text-[#0BC5EA] font-extrabold tracking-widest uppercase mt-1">Medical Portal</div>
             </div>
           </div>
         </div>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: "24px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
           {NAV.map(({ key, label, icon: Icon }) => {
             const isActive = active === key;
             return (
               <button
                 key={key}
                 onClick={() => { setActive(key); setIsMobileMenuOpen(false); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
-                  borderRadius: 12, border: "none", cursor: "pointer", textAlign: "left", width: "100%",
-                  background: isActive ? "#EBF8FF" : "transparent",
-                  color: isActive ? "#0BC5EA" : "#4A5568",
-                  fontWeight: isActive ? 700 : 500, fontSize: 14,
-                  transition: "all .2s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: isActive ? "0 4px 12px rgba(11, 197, 234, 0.1)" : "none",
-                }}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200
+                  ${isActive
+                    ? "bg-cyan-50 text-[#0BC5EA] shadow-sm shadow-cyan-100"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"}
+                `}
               >
-                <Icon active={isActive} />
+                <Icon size={20} className={isActive ? "text-[#0BC5EA]" : "text-gray-400"} />
                 {label}
               </button>
             );
           })}
         </nav>
 
-        {/* Doctor info + logout at bottom */}
-        <div style={{ borderTop: "1px solid #F7FAFC", padding: "24px 16px", background: "#FDFDFD" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 14,
-              background: "linear-gradient(135deg,#0BC5EA,#2B6CB0)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: 800, fontSize: 16, flexShrink: 0,
-              boxShadow: "0 4px 10px rgba(43, 108, 176, 0.2)",
-            }}>
+        {/* Doctor Info & Logout */}
+        <div className="p-4 mt-auto border-t border-gray-50 bg-gray-50/30">
+          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] flex items-center justify-center text-white font-black shadow-md shadow-blue-100 shrink-0">
               {initial}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#1A202C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                Dr. {doctorProfile.full_name}
-              </div>
-              <div style={{ fontSize: 12, color: "#718096", fontWeight: 500 }}>{doctorProfile.speciality}</div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-gray-900 truncate">Dr. {doctorProfile.full_name}</div>
+              <div className="text-[10px] text-gray-400 font-bold uppercase truncate">{doctorProfile.speciality}</div>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
-              padding: "12px", borderRadius: 12, border: "1px solid #FED7D7",
-              background: "#FFF5F5", color: "#C53030", fontSize: 14, fontWeight: 700, cursor: "pointer",
-              transition: "all 0.2s",
-            }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
           >
             <LogOut size={18} />
             Logout
@@ -219,34 +145,20 @@ const DoctorDashboard = () => {
         </div>
       </aside>
 
-      {/* MAIN */}
-      <main style={{
-        flex: 1, minHeight: "100vh",
-        transition: "margin 0.3s ease",
-      }} className="lg:ml-[220px] pt-24 lg:pt-8 px-6 lg:px-4 pb-8 bg-[#F7FAFC]">
-        <div>
-          {active === "dashboard" && <DoctorConsultation />}
-          {active === "profile" && <Profile defaultEditing={false} />}
-          {active === "availability" && <AppointmentCreator />}
-          {active === "appointments" && <DoctorAppointments />}
-          {active === "prescriptions" && <DoctorConsultation />}
-          {active === "chats" && <ChatList />}
-          {active === "complaints" && <DoctorComplaints />}
+      {/* MAIN CONTENT */}
+      <main className="flex-1 h-full flex flex-col overflow-hidden">
+        <div className="flex-1 h-full overflow-y-auto no-scrollbar p-6 lg:p-10 pt-20 lg:pt-10">
+          <div className="max-w-[1400px] mx-auto w-full h-full">
+            {active === "dashboard" && <DoctorDashboardHome onNavigate={setActive} />}
+            {active === "profile" && <Profile defaultEditing={false} />}
+            {active === "availability" && <AppointmentCreator />}
+            {active === "appointments" && <DoctorAppointments onNavigate={setActive} />}
+            {active === "prescriptions" && <DoctorConsultation />}
+            {active === "chats" && <ChatList />}
+            {active === "complaints" && <DoctorComplaints />}
+          </div>
         </div>
       </main>
-
-      <style>{`
-        @media (max-width: 1024px) {
-          .lg\\:ml-\\[220px\\] { margin-left: 0 !important; }
-          .lg\\:translate-x-0 { transform: translateX(-100%); }
-          .lg\\:hidden { display: flex !important; }
-        }
-        @media (min-width: 1025px) {
-          .lg\\:ml-\\[220px\\] { margin-left: 220px !important; }
-          .lg\\:translate-x-0 { transform: translateX(0) !important; }
-          .lg\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 };
