@@ -10,6 +10,7 @@ const MyAppointments = ({ statusFilter = "all" }) => {
     const [cancelId, setCancelId] = useState(null);
 
     const [callRoom, setCallRoom] = useState(null);
+    const [callDoctorName, setCallDoctorName] = useState("");
     const [userName, setUserName] = useState("");
     const [hidePast, setHidePast] = useState(true);
 
@@ -151,25 +152,35 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
     };
 
-    /* STATUS BADGE */
+    /* STATUS CONFIG */
 
-    const getStatusBadge = (status) => {
-
+    const getStatusConfig = (status) => {
         switch (status) {
-
             case "booked":
-                return "bg-blue-100 text-blue-700";
-
+                return {
+                    badge: "bg-blue-100 text-blue-700 border border-blue-200",
+                    border: "border-l-blue-500",
+                    dot: "bg-blue-500"
+                };
             case "completed":
-                return "bg-green-100 text-green-700";
-
+                return {
+                    badge: "bg-green-100 text-green-700 border border-green-200",
+                    border: "border-l-green-500",
+                    dot: "bg-green-500"
+                };
             case "cancelled":
-                return "bg-red-100 text-red-700";
-
+                return {
+                    badge: "bg-red-100 text-red-700 border border-red-200",
+                    border: "border-l-red-400",
+                    dot: "bg-red-400"
+                };
             default:
-                return "bg-gray-100 text-gray-700";
+                return {
+                    badge: "bg-gray-100 text-gray-600 border border-gray-200",
+                    border: "border-l-gray-400",
+                    dot: "bg-gray-400"
+                };
         }
-
     };
 
     /* CALL TIME WINDOW */
@@ -196,26 +207,55 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
     };
 
+    /* FORMAT DATE */
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "-";
+        try {
+            return new Date(dateStr).toLocaleDateString("en-IN", {
+                weekday: "short", day: "numeric", month: "short", year: "numeric"
+            });
+        } catch {
+            return dateStr;
+        }
+    };
+
+    const formatTime = (timeStr) => {
+        if (!timeStr) return "-";
+        try {
+            const [h, m] = timeStr.split(":");
+            const d = new Date();
+            d.setHours(+h, +m);
+            return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+        } catch {
+            return timeStr;
+        }
+    };
+
     /* VIDEO CALL SCREEN */
 
     if (callRoom) {
 
         return (
 
-            <div className="max-w-6xl mx-auto px-4 space-y-6">
+            <div className="max-w-6xl mx-auto px-4 space-y-4">
 
-                <div className="flex justify-between items-center">
-
-                    <h1 className="text-2xl font-bold">
-                        Video Consultation
-                    </h1>
-
+                <div className="flex items-center gap-3">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Video Consultation</h1>
+                        {callDoctorName && (
+                            <p className="text-sm text-gray-500 mt-0.5">with Dr. {callDoctorName}</p>
+                        )}
+                    </div>
                 </div>
 
                 <VideoCall
                     roomName={callRoom}
                     userName={userName}
-                    onLeave={() => setCallRoom(null)}
+                    onLeave={() => {
+                        setCallRoom(null);
+                        setCallDoctorName("");
+                    }}
                 />
 
             </div>
@@ -241,7 +281,6 @@ const MyAppointments = ({ statusFilter = "all" }) => {
         if (isNaN(appointmentDate.getTime())) return true;
 
         const now = new Date();
-        // Hide if the appointment ended more than 2 hours ago
         return appointmentDate.getTime() + (2 * 60 * 60 * 1000) > now.getTime();
     });
 
@@ -249,149 +288,198 @@ const MyAppointments = ({ statusFilter = "all" }) => {
 
         <div className="max-w-6xl mx-auto px-4 space-y-8">
 
+            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        My Appointments
-                    </h1>
-
-                    <p className="text-sm text-gray-500">
-                        View and manage your bookings
-                    </p>
+                    <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
+                    <p className="text-sm text-gray-500 mt-1">View and manage your consultations</p>
                 </div>
 
                 <button
                     onClick={() => setHidePast(!hidePast)}
-                    className={`px-4 py-2 rounded-lg font-medium transition text-sm flex items-center gap-2 ${hidePast ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-xl font-medium transition-all text-sm flex items-center gap-2 border shadow-sm ${hidePast
+                        ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
                 >
-                    {hidePast ? "Show All Bookings" : "Hide Passed Bookings"}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d={hidePast
+                                ? "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                            }
+                        />
+                    </svg>
+                    {hidePast ? "Show All Bookings" : "Hide Past Bookings"}
                 </button>
             </div>
 
+            {/* Loading Skeleton */}
             {loading && (
-
                 <div className="grid md:grid-cols-2 gap-6">
-
                     {[...Array(3)].map((_, i) => (
                         <div
                             key={i}
-                            className="bg-white p-6 rounded-2xl shadow animate-pulse h-40"
+                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-48"
                         />
                     ))}
-
                 </div>
-
             )}
 
+            {/* Empty State */}
             {!loading && displayAppointments.length === 0 && (
-
-                <div className="bg-white p-10 rounded-2xl shadow text-center">
-
-                    <p className="text-lg font-medium text-gray-700">
-                        No appointments found
-                    </p>
-
-                    <p className="text-sm text-gray-500 mt-1">
-                        Try changing the filter or book a consultation.
-                    </p>
-
+                <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center">
+                    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <p className="text-lg font-semibold text-gray-700">No appointments found</p>
+                    <p className="text-sm text-gray-400 mt-1">Try changing the filter or book a new consultation.</p>
                 </div>
-
             )}
 
+            {/* Appointment Cards */}
             {!loading && displayAppointments.length > 0 && (
-
                 <div className="grid md:grid-cols-2 gap-6">
 
                     {displayAppointments.map((item) => {
 
                         const slot = item.appointments;
                         const doctor = slot?.profiles;
+                        const statusConfig = getStatusConfig(item.status);
 
-                        const appointmentDateTime =
-                            new Date(`${slot?.date}T${slot?.time}`);
-
+                        const appointmentDateTime = new Date(`${slot?.date}T${slot?.time}`);
                         const now = new Date();
-
                         const canCancel = appointmentDateTime > now;
+
+                        const joinable = item.status === "booked"
+                            && !item.consultation_completed
+                            && canJoinCall(slot?.date, slot?.time);
+
+                        const showQueue = item.status === "booked"
+                            && !canJoinCall(slot?.date, slot?.time);
 
                         return (
 
                             <div
                                 key={item.id}
-                                className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition"
+                                className={`bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4 ${statusConfig.border} hover:shadow-md transition-all duration-200 overflow-hidden`}
                             >
+                                {/* Card Header */}
+                                <div className="px-6 pt-5 pb-4">
+                                    <div className="flex justify-between items-start gap-3">
 
-                                <div className="flex justify-between items-start">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-base font-bold text-gray-900 truncate">
+                                                    Dr. {doctor?.full_name || "—"}
+                                                </p>
+                                                <p className="text-sm text-gray-500 truncate">{doctor?.speciality || ""}</p>
+                                                {doctor?.institution && (
+                                                    <p className="text-xs text-gray-400 truncate">{doctor.institution}</p>
+                                                )}
+                                            </div>
+                                        </div>
 
-                                    <div>
-
-                                        <p className="text-lg font-semibold">
-                                            Dr. {doctor?.full_name}
-                                        </p>
-
-                                        <p className="text-sm text-gray-500">
-                                            {doctor?.speciality}
-                                        </p>
-
-                                        <p className="text-xs text-gray-400">
-                                            {doctor?.institution}
-                                        </p>
+                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 capitalize ${statusConfig.badge}`}>
+                                            {item.status}
+                                        </span>
 
                                     </div>
 
-                                    <span
-                                        className={`px-3 py-1 text-xs rounded-full ${getStatusBadge(item.status)}`}
-                                    >
-                                        {item.status}
-                                    </span>
+                                    {/* Date & Time */}
+                                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
+                                        <span className="flex items-center gap-1.5">
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            {formatDate(slot?.date)}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {formatTime(slot?.time)}
+                                        </span>
+                                    </div>
 
                                 </div>
 
-                                <div className="mt-4 text-sm text-gray-700">
+                                {/* Card Footer Actions */}
+                                <div className="px-6 pb-5 flex flex-wrap gap-2">
 
-                                    <p>Date: {slot?.date}</p>
-                                    <p>Time: {slot?.time}</p>
-
-                                </div>
-
-                                {item.status === "booked" && canCancel && (
-
-                                    <button
-                                        onClick={() => cancelBooking(item.id)}
-                                        disabled={cancelId === item.id}
-                                        className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                                    >
-
-                                        {cancelId === item.id
-                                            ? "Cancelling..."
-                                            : "Cancel Booking"}
-
-                                    </button>
-
-                                )}
-
-                                {item.status === "booked" && !canJoinCall(slot?.date, slot?.time) && (
-
-                                    <p className="text-sm text-yellow-600 mt-2">
-                                        Queue position: {item.queue_position || "-"}. Video link opens 10 mins before.
-                                    </p>
-
-                                )}
-
-                                {item.status === "booked" &&
-                                    !item.consultation_completed &&
-                                    canJoinCall(slot?.date, slot?.time) && (
-
-                                        <button
-                                            onClick={() => setCallRoom(item.call_room || `consult-${item.id}`)}
-                                            className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                            Join Video Consultation
-                                        </button>
-
+                                    {/* Queue Info */}
+                                    {showQueue && (
+                                        <div className="w-full flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 text-sm text-yellow-700">
+                                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>Queue #{item.queue_position || "—"} · Video link opens 10 min before</span>
+                                        </div>
                                     )}
+
+                                    {/* Join Video Call */}
+                                    {joinable && (
+                                        <div className="w-full flex flex-col gap-3">
+                                            {item.consultation_started && (
+                                                <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-xl border border-green-100 animate-fadeIn">
+                                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                    <span className="text-xs font-bold uppercase tracking-wider">Doctor is ready and waiting for you</span>
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    setCallRoom(item.call_room || `consult-${item.id}`);
+                                                    setCallDoctorName(doctor?.full_name || "");
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-sm"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                                Join Video Consultation
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Cancel */}
+                                    {item.status === "booked" && canCancel && (
+                                        <button
+                                            onClick={() => cancelBooking(item.id)}
+                                            disabled={cancelId === item.id}
+                                            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-semibold rounded-xl transition-all duration-200 disabled:opacity-50"
+                                        >
+                                            {cancelId === item.id ? (
+                                                <>
+                                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    Cancelling...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    Cancel Booking
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+
+                                </div>
 
                             </div>
 
@@ -400,7 +488,6 @@ const MyAppointments = ({ statusFilter = "all" }) => {
                     })}
 
                 </div>
-
             )}
 
         </div>

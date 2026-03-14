@@ -13,6 +13,11 @@ import CompleteProfile from "./pages/CompleteProfile";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 
+import Appointments from "./pages/patient/Appointments";
+import MyAppointments from "./pages/patient/MyAppointments";
+import Prescriptions from "./pages/patient/PatientPrescriptions";
+import PatientProfile from "./pages/patient/PatientProfile";
+
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
@@ -55,10 +60,14 @@ function App() {
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
-        {/* Dashboard Pages */}
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
+
         <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-        <Route path="/chat" element={<ChatList />} />
+        <Route path="appointments" element={<Appointments />} />
+        <Route path="my-appointments" element={<MyAppointments />} />
+        <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="profile" element={<PatientProfile />} />
+        <Route path="chat" element={<ChatList />} />
 
 
 
