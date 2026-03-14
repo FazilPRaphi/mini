@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import ChatList from "../../components/ChatList";
 import Appointments from "./Appointments";
-import MyAppointments from "./Myappointments";
+import MyAppointments from "./MyAppointments";
 import Prescriptions from "./PatientPrescriptions";
 import PatientProfile from "./PatientProfile";
 import PatientChatbot from "./PatientChatbot";
