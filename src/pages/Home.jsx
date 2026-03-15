@@ -43,7 +43,7 @@ export default function Home() {
     }, 3500);
 
     return () => clearInterval(interval);
-  }, [direction, features.length]); // Added features.length to dependency array
+  }, [direction, features.length]);
 
   return (
     <div className="bg-[#F4FAFC] text-[#0F172A] min-h-screen flex flex-col overflow-x-hidden">
@@ -279,42 +279,34 @@ export default function Home() {
 
           </div>
 
-          {/* FEATURE CAROUSEL (for mobile screens) */}
-          <div className="mt-10 px-4 block sm:hidden overflow-hidden">
-            <div
-              className="flex flex-col transition-transform duration-700 ease-in-out"
-              style={{
-                transform: `translateY(-${index * 100}%)`
-              }}
-            >
-              {features.map((feature, i) => (
-                <div
-                  key={i}
-                  className="min-h-screen flex flex-col items-center justify-center px-4"
+          {/* FEATURE GRID (for mobile screens) - STATIC */}
+          <div className="mt-10 px-4 block sm:hidden space-y-4">
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className="bg-gradient-to-br from-sky-500 to-teal-400 text-white p-6 rounded-2xl shadow-lg"
+              >
+                <h3 className="font-bold text-xl mb-3">{feature.title}</h3>
+                <p className="text-sm opacity-90 leading-relaxed mb-4">{feature.desc}</p>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="
+                  w-full
+                  px-6 py-2.5
+                  bg-white
+                  text-sky-600
+                  rounded-lg
+                  font-semibold
+                  hover:scale-[1.05]
+                  active:scale-[0.95]
+                  transition-all
+                  text-sm
+                  "
                 >
-                  <div className="bg-gradient-to-br from-sky-500 to-teal-400 text-white p-8 rounded-2xl shadow-xl max-w-sm w-full">
-                    <h3 className="font-bold text-2xl mb-4">{feature.title}</h3>
-                    <p className="text-base opacity-90 leading-relaxed mb-6">{feature.desc}</p>
-                    <button
-                      onClick={() => navigate("/register")}
-                      className="
-                      w-full
-                      px-6 py-3
-                      bg-white
-                      text-sky-600
-                      rounded-lg
-                      font-semibold
-                      hover:scale-[1.05]
-                      active:scale-[0.95]
-                      transition-all
-                      "
-                    >
-                      Explore Feature
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  Explore Feature
+                </button>
+              </div>
+            ))}
           </div>
 
         </div>
