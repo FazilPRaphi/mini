@@ -91,7 +91,7 @@ const DoctorAppointments = () => {
             patient_id,
             appointment_id,
             appointments(date, time),
-            profiles:patient_id(full_name, age, gender)
+            profiles:patient_id(full_name, age, gender, avatar_url)
         `)
             .eq("doctor_id", user.id)
             .eq("status", "booked")
@@ -210,7 +210,7 @@ const DoctorAppointments = () => {
         // Fetch the latest profile data explicitly to ensure medical_history is up to date
         const { data: profileData } = await supabase
             .from("profiles")
-            .select("full_name, age, gender, phone, medical_history")
+            .select("full_name, age, gender, phone, medical_history, avatar_url")
             .eq("id", booking.patient_id)
             .single();
 
@@ -351,11 +351,15 @@ const DoctorAppointments = () => {
                         {/* Patient Info Card */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden border border-gray-100">
+                                    {p?.avatar_url ? (
+                                        <img src={p.avatar_url} alt="Patient Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    )}
                                 </div>
                                 <div>
                                     <p className="font-bold text-gray-900 text-lg">{p?.full_name || "Patient"}</p>
@@ -711,11 +715,15 @@ const DoctorAppointments = () => {
                                 className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4 hover:shadow-md transition-all duration-200 flex flex-wrap items-center gap-4"
                             >
                                 {/* Patient Avatar */}
-                                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-100">
+                                    {b.profiles?.avatar_url ? (
+                                        <img src={b.profiles.avatar_url} alt="PatientAvatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    )}
                                 </div>
 
                                 {/* Info */}

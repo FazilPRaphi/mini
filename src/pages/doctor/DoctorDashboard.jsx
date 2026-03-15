@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import healthsyncLogo from "../../assets/healthsync-logo.png";
 import Profile from "./Profile";
 import AppointmentCreator from "./AppointmentCreator";
 import DoctorAppointments from "./DoctorAppointments";
@@ -65,6 +66,7 @@ const DoctorDashboard = () => {
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
+          <img src={healthsyncLogo} alt="HealthSync" className="h-7 w-auto object-contain" />
           <span className="font-extrabold text-xl text-[#0BC5EA] tracking-tight">HealthSync</span>
         </div>
         <NotificationBell />
@@ -88,13 +90,7 @@ const DoctorDashboard = () => {
         {/* Logo */}
         <div className="p-8 pb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#0BC5EA] to-[#00B5D8] rounded-xl flex items-center justify-center shadow-lg shadow-cyan-100">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
-                <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="12" r="2.5" fill="#fff" />
-              </svg>
-            </div>
+            <img src={healthsyncLogo} alt="HealthSync" className="h-10 w-auto object-contain" />
             <div>
               <div className="font-black text-lg text-gray-900 leading-none">HealthSync</div>
               <div className="text-[10px] text-[#0BC5EA] font-extrabold tracking-widest uppercase mt-1">Medical Portal</div>
@@ -126,9 +122,13 @@ const DoctorDashboard = () => {
 
         {/* Doctor Info & Logout */}
         <div className="p-4 mt-auto border-t border-gray-50 bg-gray-50/30">
-          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] flex items-center justify-center text-white font-black shadow-md shadow-blue-100 shrink-0">
-              {initial}
+          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setActive("profile")}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] flex items-center justify-center text-white font-black shadow-md shadow-blue-100 shrink-0 overflow-hidden">
+              {doctorProfile.avatar_url ? (
+                <img src={doctorProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                initial
+              )}
             </div>
             <div className="min-w-0">
               <div className="text-sm font-bold text-gray-900 truncate">Dr. {doctorProfile.full_name}</div>

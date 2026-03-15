@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import toast from "react-hot-toast";
-import {
-  Mail,
-  Shield,
-  Award,
-  Edit3,
-  Camera,
-  CheckCircle,
-  Clock,
-} from "lucide-react";
+import { Mail, Shield, Award, Edit3, Camera, CheckCircle, Clock } from "lucide-react";
 
 const Profile = ({ defaultEditing = false }) => {
   const [profile, setProfile] = useState({
@@ -32,6 +24,7 @@ const Profile = ({ defaultEditing = false }) => {
   const [pageLoading, setPageLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(defaultEditing);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [lastLogin] = useState(
     new Date().toLocaleDateString("en-US", {
@@ -121,6 +114,53 @@ const Profile = ({ defaultEditing = false }) => {
     setLoading(false);
   };
 
+  const uploadAvatar = async (event) => {
+    try {
+      setUploadingImage(true);
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const publicURL = urlData.publicUrl;
+
+      // Update local state immediately
+      setProfile((prev) => ({ ...prev, avatar_url: publicURL }));
+      setEditForm((prev) => ({ ...prev, avatar_url: publicURL }));
+
+      // Update database if not in edit mode (auto-save avatar)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ avatar_url: publicURL })
+          .eq("id", user.id);
+        toast.success("Profile photo updated!");
+      }
+    } catch (error) {
+      toast.error("Error uploading image: " + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const updatePassword = async () => {
     if (!password) return toast.error("Password cannot be empty");
 
@@ -181,7 +221,9 @@ const Profile = ({ defaultEditing = false }) => {
                   <img
                     src={profile.avatar_url}
                     alt="avatar"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(profile.avatar_url, '_blank')}
+                    title="Click to view full image"
                   />
                 ) : (
                   <span className="text-4xl font-black text-gray-400">
@@ -191,9 +233,29 @@ const Profile = ({ defaultEditing = false }) => {
               </div>
             </div>
 
-            <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center">
-              <Camera size={18} />
-            </button>
+            <div className="relative">
+              <input 
+                type="file" 
+                id="avatar-upload" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={uploadAvatar}
+                disabled={uploadingImage}
+              />
+              <label 
+                htmlFor="avatar-upload"
+                className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors shadow-lg"
+              >
+                {uploadingImage ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <Camera size={18} />
+                )}
+              </label>
+            </div>
           </div>
 
           {/* Profile Info */}

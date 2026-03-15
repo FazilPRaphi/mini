@@ -129,11 +129,11 @@ const AppointmentCreator = () => {
   };
 
   return (
-    <div className="h-full flex flex-col font-redhat animate-fadeIn overflow-hidden">
+    <div className="h-full flex flex-col font-redhat animate-fadeIn">
 
       {/* HEADER */}
 
-      <div className="mb-8 flex justify-between items-end">
+      <div className="mb-6 sm:mb-8 flex flex-wrap justify-between items-start sm:items-end gap-3">
 
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">
@@ -153,7 +153,7 @@ const AppointmentCreator = () => {
 
       </div>
 
-      <div className="flex-1 grid grid-cols-12 gap-8 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 overflow-hidden">
 
         {/* CREATE SLOT PANEL */}
 

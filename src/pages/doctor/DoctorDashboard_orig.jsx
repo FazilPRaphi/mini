@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Profile from "./Profile";
+import logo from "../../assets/healthsync-logo.png";
 import AppointmentCreator from "./AppointmentCreator";
 import DoctorAppointments from "./DoctorAppointments";
 import DoctorConsultation from "./DoctorConsultation";
@@ -18,38 +19,44 @@ const DashboardIcon = ({ active }) => (
     <rect x="14" y="14" width="7" height="7" rx="1.5" />
   </svg>
 );
+
 const PatientsIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
   </svg>
 );
+
 const ConsultIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
   </svg>
 );
+
 const CalIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
   </svg>
 );
+
 const ChatIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
   </svg>
 );
+
 const PersonIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
   </svg>
 );
+
 const ComplaintIcon = ({ active }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "#0BC5EA" : "#A0AEC0"}>
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
   </svg>
 );
 
-/* ── NAV defined AFTER all icon components ── */
+/* NAV */
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { key: "appointments", label: "Booked Patients", icon: PatientsIcon },
@@ -77,12 +84,14 @@ const DoctorDashboard = () => {
         .single();
 
       if (!profile) return;
+
       setDoctorProfile(profile);
 
       const required = ["full_name", "institution", "speciality"];
       const incomplete = required.some(f => !profile[f] || profile[f].toString().trim() === "");
       if (incomplete) window.location.href = "/complete-profile";
     };
+
     init();
   }, []);
 
@@ -109,6 +118,16 @@ const DoctorDashboard = () => {
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
+          <img
+            src={logo}
+            alt="HealthSync Logo"
+            style={{
+              width: 32,
+              height: 32,
+              objectFit: "contain",
+              borderRadius: 8
+            }}
+          />
           <span style={{ fontWeight: 800, fontSize: 18, color: "#0BC5EA" }}>HealthSync</span>
         </div>
         <NotificationBell />
@@ -134,36 +153,45 @@ const DoctorDashboard = () => {
         transform: isMobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
         left: 0,
       }} className="lg:translate-x-0">
-        {/* Logo */}
+
+        {/* LOGO */}
         <div style={{ padding: "32px 24px 20px", borderBottom: "1px solid #F7FAFC" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, background: "linear-gradient(135deg,#0BC5EA,#00B5D8)",
-                borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(11, 197, 234, 0.2)",
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 4L4 8v8l8 4 8-4V8z" fill="rgba(255,255,255,0.3)" />
-                  <path d="M12 4v16M4 8l8 4M20 8l-8 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="2.5" fill="#fff" />
-                </svg>
-              </div>
+              <img
+                src={logo}
+                alt="HealthSync Logo"
+                style={{
+                  width: 40,
+                  height: 40,
+                  objectFit: "contain",
+                  borderRadius: 10
+                }}
+              />
+
               <div>
-                <div style={{ fontWeight: 800, fontSize: 17, color: "#1A202C", lineHeight: 1.1 }}>HealthSync</div>
-                <div style={{ fontSize: 10, color: "#0BC5EA", fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", marginTop: 2 }}>Medical Portal</div>
+                <div style={{ fontWeight: 800, fontSize: 17, color: "#1A202C", lineHeight: 1.1 }}>
+                  HealthSync
+                </div>
+                <div style={{ fontSize: 10, color: "#0BC5EA", fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", marginTop: 2 }}>
+                  Medical Portal
+                </div>
               </div>
             </div>
+
             <div className="hidden lg:block">
               <NotificationBell />
             </div>
+
           </div>
         </div>
 
-        {/* Nav */}
+        {/* NAV */}
         <nav style={{ flex: 1, padding: "24px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
           {NAV.map(({ key, label, icon: Icon }) => {
             const isActive = active === key;
+
             return (
               <button
                 key={key}
@@ -185,68 +213,54 @@ const DoctorDashboard = () => {
           })}
         </nav>
 
-        {/* Doctor info + logout at bottom */}
+        {/* DOCTOR INFO */}
         <div style={{ borderTop: "1px solid #F7FAFC", padding: "24px 16px", background: "#FDFDFD" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 14,
               background: "linear-gradient(135deg,#0BC5EA,#2B6CB0)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: 800, fontSize: 16, flexShrink: 0,
-              boxShadow: "0 4px 10px rgba(43, 108, 176, 0.2)",
+              color: "#fff", fontWeight: 800, fontSize: 16
             }}>
               {initial}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#1A202C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
                 Dr. {doctorProfile.full_name}
               </div>
-              <div style={{ fontSize: 12, color: "#718096", fontWeight: 500 }}>{doctorProfile.speciality}</div>
+              <div style={{ fontSize: 12, color: "#718096" }}>
+                {doctorProfile.speciality}
+              </div>
             </div>
           </div>
+
           <button
             onClick={handleLogout}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
               padding: "12px", borderRadius: 12, border: "1px solid #FED7D7",
-              background: "#FFF5F5", color: "#C53030", fontSize: 14, fontWeight: 700, cursor: "pointer",
-              transition: "all 0.2s",
+              background: "#FFF5F5", color: "#C53030", fontSize: 14, fontWeight: 700, cursor: "pointer"
             }}
           >
             <LogOut size={18} />
             Logout
           </button>
         </div>
+
       </aside>
 
       {/* MAIN */}
-      <main style={{
-        flex: 1, minHeight: "100vh",
-        transition: "margin 0.3s ease",
-      }} className="lg:ml-[220px] pt-24 lg:pt-8 px-6 lg:px-4 pb-8 bg-[#F7FAFC]">
-        <div>
-          {active === "dashboard" && <DoctorConsultation />}
-          {active === "profile" && <Profile defaultEditing={false} />}
-          {active === "availability" && <AppointmentCreator />}
-          {active === "appointments" && <DoctorAppointments />}
-          {active === "prescriptions" && <DoctorConsultation />}
-          {active === "chats" && <ChatList />}
-          {active === "complaints" && <DoctorComplaints />}
-        </div>
+      <main style={{ flex: 1, minHeight: "100vh" }} className="lg:ml-[220px] pt-24 lg:pt-8 px-6 lg:px-4 pb-8 bg-[#F7FAFC]">
+        {active === "dashboard" && <DoctorConsultation />}
+        {active === "profile" && <Profile defaultEditing={false} />}
+        {active === "availability" && <AppointmentCreator />}
+        {active === "appointments" && <DoctorAppointments />}
+        {active === "prescriptions" && <DoctorConsultation />}
+        {active === "chats" && <ChatList />}
+        {active === "complaints" && <DoctorComplaints />}
       </main>
 
-      <style>{`
-        @media (max-width: 1024px) {
-          .lg\\:ml-\\[220px\\] { margin-left: 0 !important; }
-          .lg\\:translate-x-0 { transform: translateX(-100%); }
-          .lg\\:hidden { display: flex !important; }
-        }
-        @media (min-width: 1025px) {
-          .lg\\:ml-\\[220px\\] { margin-left: 220px !important; }
-          .lg\\:translate-x-0 { transform: translateX(0) !important; }
-          .lg\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 };

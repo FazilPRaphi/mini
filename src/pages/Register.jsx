@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Mail, Lock, User } from "lucide-react";
+import logo from "../assets/healthsync-logo.png";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -34,7 +35,6 @@ const Register = () => {
         return;
       }
 
-      // UPSERT instead of insert to avoid duplicate key errors
       const { error: profileError } = await supabase
         .from("profiles")
         .upsert({
@@ -48,9 +48,7 @@ const Register = () => {
       if (profileError) throw profileError;
 
       if (role === "doctor") {
-        toast.success(
-          "Doctor registration submitted. Admin approval required."
-        );
+        toast.success("Doctor registration submitted. Admin approval required.");
         navigate("/login");
       } else {
         toast.success("Account created successfully!");
@@ -65,182 +63,244 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#e8f3f7] to-[#cfdde3] flex flex-col">
+    <div className="min-h-screen flex">
 
-      {/* NAVBAR */}
-      <div className="flex justify-between items-center px-10 py-5 bg-white shadow-sm">
-        <Link to="/" className="flex items-center gap-2 font-bold text-lg">
-          <div className="w-7 h-7 bg-cyan-500 rounded-full"></div>
-          HealthSync
-        </Link>
+      
+      {/* LEFT SECTION — BLOB GRADIENT */}
+      <div className="hidden md:flex w-1/2 relative overflow-hidden items-center justify-center px-16">
 
-        <div className="flex items-center gap-4">
-          <span className="text-gray-500 text-sm">
-            Already have an account?
-          </span>
+        {/* ORIGINAL GRADIENT — EXACT SAME */}
+        <div
+          className="absolute inset-0 scale-110"
+          style={{
+            background: `
+        radial-gradient(ellipse 90% 70% at 60% 110%, #38bdf8 0%, transparent 55%),
+        radial-gradient(ellipse 80% 70% at 110% 40%, #818cf8 0%, transparent 50%),
+        radial-gradient(ellipse 70% 60% at 20% 20%, #2dd4bf 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 80% 0%, #e879f9 0%, transparent 50%)
+      `,
+            filter: "blur(18px) saturate(1.4)",
+          }}
+        />
 
-          <Link
-            to="/login"
-            className="border border-cyan-500 text-cyan-600 px-5 py-2 rounded-lg"
-          >
-            Login
-          </Link>
-        </div>
-      </div>
+        {/* CONTENT */}
+        <div className="relative z-10 max-w-md text-slate-800">
 
-      {/* MAIN CONTENT */}
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
+          <h2 className="text-5xl font-bold mb-6 leading-tight">
+            Your Health,
+            <br />
+            <span className="text-sky-600">Simplified</span>
+          </h2>
 
-        <div className="w-full max-w-6xl grid md:grid-cols-2 gap-10 items-center">
+          <p className="text-lg text-slate-600 mb-10">
+            Connect with verified doctors, manage your medical
+            records, and access healthcare services anytime
+            in one secure platform.
+          </p>
 
-          {/* LEFT SIDE INFO */}
           <div className="space-y-6">
 
-            <span className="bg-cyan-100 text-cyan-600 px-4 py-1 rounded-full text-xs font-medium">
-              TRUSTED BY 50K+ PATIENTS
-            </span>
-
-            <h1 className="text-5xl font-bold leading-tight">
-              Healthcare <span className="text-cyan-500">simplified</span> for you and your family.
-            </h1>
-
-            <p className="text-gray-600">
-              Join thousands of users who consult with top-certified doctors instantly.
-              Your health, our priority.
-            </p>
-
-            <div className="space-y-4 mt-6">
-
-              <div className="flex items-center gap-3">
-                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
-                HD Video Consultations
+            <div className="flex gap-4">
+              <div>⚡</div>
+              <div>
+                <h3 className="font-semibold">Instant Appointments</h3>
+                <p className="text-sm text-slate-600">
+                  Book consultations with trusted doctors within minutes.
+                </p>
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
-                Digital Prescriptions
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="bg-cyan-100 w-8 h-8 rounded-full"></div>
-                24/7 Availability
-              </div>
-
             </div>
+
+            <div className="flex gap-4">
+              <div>🔒</div>
+              <div>
+                <h3 className="font-semibold">Secure Health Records</h3>
+                <p className="text-sm text-slate-600">
+                  Your medical data protected with advanced encryption.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div>🤖</div>
+              <div>
+                <h3 className="font-semibold">AI Health Assistant</h3>
+                <p className="text-sm text-slate-600">
+                  Get instant symptom guidance anytime you need it.
+                </p>
+              </div>
+            </div>
+
           </div>
 
-          {/* RIGHT SIGNUP FORM */}
-          <div className="bg-white rounded-3xl shadow-lg p-10">
+          
 
-            <h2 className="text-2xl font-bold mb-2">
-              Create Your Account
-            </h2>
+        </div>
 
-            <p className="text-gray-500 mb-6">
-              Start your journey to better health today.
-            </p>
+      </div>
+      
 
-            <form onSubmit={handleRegister} className="space-y-5">
+      
 
-              {/* ROLE SELECTOR */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
 
-                <button
-                  type="button"
-                  onClick={() => setRole("patient")}
-                  className={`flex-1 py-2 rounded-lg ${role === "patient"
-                    ? "bg-cyan-500 text-white"
-                    : "text-gray-600"
-                    }`}
-                >
-                  Patient
-                </button>
+      {/* RIGHT SECTION — SIGNUP CARD */}
+      <div className="w-full md:w-1/2 relative bg-gradient-to-br from-sky-50 to-slate-50 flex flex-col items-center justify-center px-6 md:px-8 py-16 md:py-0 min-h-screen">
 
-                <button
-                  type="button"
-                  onClick={() => setRole("doctor")}
-                  className={`flex-1 py-2 rounded-lg ${role === "doctor"
-                    ? "bg-cyan-500 text-white"
-                    : "text-gray-600"
-                    }`}
-                >
-                  Doctor
-                </button>
+        {/* BACK BUTTON */}
+        <button
+          onClick={() => navigate("/")}
+          className="absolute top-6 left-6 md:top-8 md:left-8 bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-white rounded-lg px-4 py-2 text-sm font-semibold shadow-md shadow-sky-300/30 hover:shadow-lg hover:shadow-sky-300/40 transition-all duration-200 hover:-translate-y-0.5 z-50"
+        >
+          ← Home
+        </button>
 
-              </div>
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg shadow-sky-200/30 border border-sky-100/50 px-6 sm:px-10 py-8 sm:py-12 relative mt-2 sm:mt-0">
 
-              {/* NAME */}
-              <div>
-                <label className="text-sm text-gray-600">Full Name</label>
+          {/* LOGO */}
+          <div className="flex items-center gap-2 mb-8">
+            <img src={logo} className="w-6 h-6 mix-blend-multiply opacity-90" alt="HealthSync" />
+            <span className="font-bold text-sm text-sky-500 tracking-tight">
+              HealthSync
+            </span>
+          </div>
 
-                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
-                  <User size={18} className="text-gray-400 mr-2" />
+          {/* HEADING */}
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">
+            CREATE ACCOUNT
+          </h1>
 
-                  <input
-                    type="text"
-                    placeholder="John Doe"
-                    className="flex-1 outline-none"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+          <p className="text-sm text-slate-500 mb-8">
+            Start your journey to better health today.
+          </p>
 
-              {/* EMAIL */}
-              <div>
-                <label className="text-sm text-gray-600">Email Address</label>
+          <form onSubmit={handleRegister} className="space-y-5">
 
-                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
-                  <Mail size={18} className="text-gray-400 mr-2" />
+            {/* ROLE SELECTOR */}
+            <div className="flex bg-slate-100 rounded-lg p-1 gap-2">
 
-                  <input
-                    type="email"
-                    placeholder="john@example.com"
-                    className="flex-1 outline-none"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <label className="text-sm text-gray-600">Password</label>
-
-                <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
-                  <Lock size={18} className="text-gray-400 mr-2" />
-
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="flex-1 outline-none"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* BUTTON */}
               <button
-                disabled={loading}
-                className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-medium shadow-md transition disabled:opacity-60"
+                type="button"
+                onClick={() => setRole("patient")}
+                className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${role === "patient"
+                    ? "bg-gradient-to-r from-sky-500 to-teal-400 text-white shadow-md shadow-sky-300/30"
+                    : "text-slate-600 hover:text-slate-900"
+                  }`}
               >
-                {loading ? "Creating Account..." : "Create Account →"}
+                Patient
               </button>
 
-            </form>
+              <button
+                type="button"
+                onClick={() => setRole("doctor")}
+                className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${role === "doctor"
+                    ? "bg-gradient-to-r from-sky-500 to-teal-400 text-white shadow-md shadow-sky-300/30"
+                    : "text-slate-600 hover:text-slate-900"
+                  }`}
+              >
+                Doctor
+              </button>
 
-          </div>
+            </div>
+
+            {/* NAME */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-2">
+                Full Name
+              </label>
+
+              <div className="flex items-center h-[44px] px-4 rounded-lg border border-slate-200 bg-slate-50 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 focus-within:bg-white transition-all">
+
+                <User size={16} className="text-slate-400 mr-2" />
+
+                <input
+                  type="text"
+                  placeholder=" "
+                  className="flex-1 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+
+              </div>
+            </div>
+
+            {/* EMAIL */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-2">
+                Email Address
+              </label>
+
+              <div className="flex items-center h-[44px] px-4 rounded-lg border border-slate-200 bg-slate-50 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 focus-within:bg-white transition-all">
+
+                <Mail size={16} className="text-slate-400 mr-2" />
+
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="flex-1 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+
+              </div>
+            </div>
+
+            {/* PASSWORD */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-2">
+                Password
+              </label>
+
+              <div className="flex items-center h-[44px] px-4 rounded-lg border border-slate-200 bg-slate-50 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 focus-within:bg-white transition-all">
+
+                <Lock size={16} className="text-slate-400 mr-2" />
+
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  className="flex-1 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+              </div>
+            </div>
+
+            {/* CREATE ACCOUNT BUTTON */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="
+                w-full h-[44px] mt-6 rounded-lg
+                bg-gradient-to-r from-sky-500 to-teal-400
+                hover:from-sky-400 hover:to-teal-300
+                text-white text-sm font-semibold
+                shadow-md shadow-sky-300/30
+                hover:shadow-lg hover:shadow-sky-300/40
+                hover:-translate-y-0.5
+                transition-all duration-200
+              "
+            >
+              {loading ? "Creating Account..." : "Create Account →"}
+            </button>
+
+          </form>
+
+          {/* LOGIN LINK */}
+          <p className="text-center text-sm text-slate-600 mt-6">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-sky-500 hover:text-sky-600 transition-colors"
+            >
+              Login here
+            </Link>
+          </p>
+
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div className="text-center text-xs text-gray-500 pb-6">
-        © 2026 HealthSync Health Systems. All rights reserved.
-      </div>
     </div>
   );
 };

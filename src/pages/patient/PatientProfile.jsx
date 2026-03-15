@@ -12,6 +12,7 @@ const initialForm = {
   blood_group: "",
   emergency_contact: "",
   medical_history: "",
+  avatar_url: "",
 };
 
 const PatientProfile = ({ defaultEditing = false }) => {
@@ -25,6 +26,7 @@ const PatientProfile = ({ defaultEditing = false }) => {
   const [isEditing, setIsEditing] = useState(defaultEditing);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   useEffect(() => {
@@ -115,6 +117,54 @@ const PatientProfile = ({ defaultEditing = false }) => {
     }
   };
 
+  const uploadAvatar = async (event) => {
+    try {
+      setUploadingImage(true);
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileExt = file.name.split(".").pop();
+      // Need import { v4 as uuidv4 } from "uuid"; at the top, but we'll use a simple timestamp instead to avoid modifying imports if uuid isn't present
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const publicURL = urlData.publicUrl;
+
+      // Update local state immediately
+      setForm((prev) => ({ ...prev, avatar_url: publicURL }));
+      setEditForm((prev) => ({ ...prev, avatar_url: publicURL }));
+
+      // Update database if not in edit mode (auto-save avatar)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ avatar_url: publicURL })
+          .eq("id", user.id);
+        toast.success("Profile photo updated!");
+      }
+    } catch (error) {
+      toast.error("Error uploading image: " + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const changePassword = async () => {
     if (!password) return toast.error("Password cannot be empty");
     const { error } = await supabase.auth.updateUser({ password });
@@ -139,20 +189,45 @@ const PatientProfile = ({ defaultEditing = false }) => {
       <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 items-center md:items-start">
 
         {/* avatar */}
-        <div className="relative shrink-0">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-4xl shadow-inner border-4 border-white">
-            👤
+        <div className="relative shrink-0 group">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-[30px] bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-4xl shadow-inner border-4 border-white overflow-hidden">
+            {form.avatar_url ? (
+              <img 
+                src={form.avatar_url} 
+                alt="Profile" 
+                className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" 
+                onClick={() => window.open(form.avatar_url, '_blank')}
+                title="Click to view full image"
+              />
+            ) : (
+              "👤"
+            )}
           </div>
 
-          {!isEditing && (
-            <button
-              onClick={openEdit}
-              className="absolute -bottom-2 -right-2 bg-cyan-600 text-white p-2.5 rounded-xl shadow-lg hover:scale-110 transition-transform active:scale-95 border-2 border-white"
-              title="Edit profile"
+          <div className="absolute -bottom-2 -right-2">
+            <input 
+              type="file" 
+              id="patient-avatar-upload" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={uploadAvatar}
+              disabled={uploadingImage}
+            />
+            <label 
+              htmlFor="patient-avatar-upload"
+              className="flex items-center justify-center w-10 h-10 bg-cyan-600 text-white rounded-xl shadow-lg hover:bg-cyan-700 cursor-pointer hover:scale-110 transition-transform active:scale-95 border-2 border-white"
+              title="Upload profile picture"
             >
-              ✎
-            </button>
-          )}
+              {uploadingImage ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              )}
+            </label>
+          </div>
         </div>
 
         {/* info / form */}

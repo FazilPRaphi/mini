@@ -24,8 +24,10 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    const bookedAt = new Date(booking.booked_at);
-    const expiresAt = new Date(bookedAt.getTime() + 24 * 60 * 60 * 1000);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+    // Use expiresAt properly provided by ChatList (combining date/time and adding 24hrs)
+    const expiresAt = booking.expiresAt ? new Date(booking.expiresAt) : new Date(new Date(booking.booked_at).getTime() + 24 * 60 * 60 * 1000);
 
     const [timeLeft, setTimeLeft] = useState("");
     const [expired, setExpired] = useState(false);
@@ -455,18 +457,55 @@ const ChatWindow = ({ booking, currentUserId, onBack }) => {
 
 
     return (
-        <div className="max-w-4xl mx-auto w-full h-[85vh] flex flex-col bg-gray-50 rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div className="max-w-4xl mx-auto w-full h-[85vh] flex flex-col bg-gray-50 rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
+            {/* IMAGE MODAL */}
+            {isImageModalOpen && booking.otherPartyAvatar && (
+                <div 
+                    className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 transition-all"
+                    onClick={() => setIsImageModalOpen(false)}
+                >
+                    <div className="relative max-w-lg w-full max-h-[90vh] flex flex-col items-center">
+                        <button 
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 bg-black/40 rounded-full transition"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsImageModalOpen(false);
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img 
+                            src={booking.otherPartyAvatar} 
+                            alt={`${booking.otherPartyName} Full Avatar`} 
+                            className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20"
+                            onClick={(e) => e.stopPropagation()} // Prevent click-through closing
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* HEADER */}
             <div className="bg-[#0BC5EA] px-6 py-4 flex justify-between items-center shadow-sm z-10 transition-colors duration-300">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
-                        <User size={24} />
-                    </div>
+                    {booking.otherPartyAvatar ? (
+                        <button 
+                            className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm overflow-hidden border-2 border-white/40 cursor-pointer hover:border-white transition-all shadow-sm"
+                            onClick={() => setIsImageModalOpen(true)}
+                            title="View full profile picture"
+                        >
+                            <img src={booking.otherPartyAvatar} alt="avatar" className="w-full h-full object-cover" />
+                        </button>
+                    ) : (
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                            <User size={24} />
+                        </div>
+                    )}
                     <div>
                         <h1 className="text-xl font-semibold text-white tracking-wide">
-                            {booking.otherPartyName}
+                            {booking.otherPartyRole === "doctor" ? "Dr. " : ""}{booking.otherPartyName}
                         </h1>
-                        <p className="text-sm text-cyan-50 font-medium">
+                        <p className="text-sm text-cyan-50 font-medium flex items-center gap-1.5 mt-0.5">
+                            <span className={`w-2 h-2 rounded-full ${online ? "bg-green-400 animate-pulse" : "bg-gray-300"}`} />
                             {online ? "Online" : "Offline"}
                         </p>
                     </div>

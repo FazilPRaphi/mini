@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { NavLink, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import logo from "../assets/healthsync-logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,7 +23,6 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Authenticate
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -35,7 +36,6 @@ const Login = () => {
 
       const user = data.user;
 
-      // Fetch profile
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role,status")
@@ -51,7 +51,6 @@ const Login = () => {
       const role = profile.role;
       const status = profile.status;
 
-      // ADMIN
       if (role === "admin") {
         toast.error("Please login from the admin portal.");
         await supabase.auth.signOut();
@@ -59,7 +58,6 @@ const Login = () => {
         return;
       }
 
-      // DOCTOR
       if (role === "doctor") {
         if (status === "pending") {
           toast.error("Your account is awaiting admin approval.");
@@ -75,14 +73,12 @@ const Login = () => {
           return;
         }
 
-        // allow approved OR legacy doctors (status null)
         toast.success("Welcome Doctor");
         navigate("/doctor-dashboard");
         setLoading(false);
         return;
       }
 
-      // PATIENT
       if (role === "patient") {
         toast.success("Login successful");
         navigate("/patient-dashboard");
@@ -90,9 +86,7 @@ const Login = () => {
         return;
       }
 
-      // fallback
       toast.error("Unknown account type.");
-
     } catch (err) {
       console.error(err);
       toast.error("Login failed.");
@@ -102,140 +96,181 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#e8f3f7] to-[#cfdde3] flex flex-col">
+    <div className="min-h-screen flex">
 
-      {/* NAVBAR */}
-      <div className="flex justify-between items-center px-10 py-5 bg-white shadow-sm">
-        <NavLink to="/" className="flex items-center gap-2 font-bold text-lg">
-          <div className="w-7 h-7 bg-cyan-500 rounded-full"></div>
-          HealthSync
-        </NavLink>
+      <button
+        onClick={() => navigate("/") }
+        className="absolute top-6 left-6 bg-gradient-to-r from-sky-500 to-teal-400 text-white rounded-lg px-4 py-2 text-sm font-semibold shadow-md hover:-translate-y-0.5 transition"
+      >
+        ← Home
+      </button>
 
-        <div className="flex items-center gap-6">
-          <NavLink className="text-gray-600 hover:text-black">
-            Find a Doctor
-          </NavLink>
+      {/* LEFT LOGIN SECTION */}
+      <div className="w-full md:w-1/2 bg-gradient-to-br from-sky-50 to-slate-50 flex items-center justify-center px-6 md:px-8 py-16">
 
-          <button className="bg-cyan-500 text-white px-5 py-2 rounded-lg">
-            Help
-          </button>
-        </div>
-      </div>
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-sky-100 px-10 py-12">
 
-      {/* LOGIN CARD */}
-      <div className="flex flex-1 items-center justify-center px-6 py-10">
+          <div className="flex items-center gap-2 mb-8">
+            <img src={logo} className="w-6 h-6" alt="HealthSync"/>
+            <span className="font-bold text-sm text-sky-500">
+              HealthSync
+            </span>
+          </div>
 
-        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-lg grid md:grid-cols-2 overflow-hidden">
+          <h1 className="text-4xl font-bold mb-2">
+            LOGIN
+          </h1>
 
-          {/* IMAGE PANEL */}
-          <div
-            className="hidden md:flex flex-col justify-end p-12 text-white bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://image2url.com/r2/default/images/1772634318695-66815854-2f00-4a14-89a3-d44ba4784fde.png')",
-            }}
+          <p className="text-sm text-slate-500 mb-8">
+            Sign in to access your health portal.
+          </p>
+
+          {/* EMAIL */}
+          <div className="mb-5">
+            <label className="block text-xs font-medium mb-2">
+              Email
+            </label>
+
+            <input
+              type="email"
+              placeholder="username@gmail.com"
+              value={email}
+              onChange={(e)=>setEmail(e.target.value)}
+              className="w-full h-[44px] px-4 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:border-sky-400"
+            />
+          </div>
+
+          {/* PASSWORD */}
+          <div className="mb-3">
+
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-xs font-medium">
+                Password
+              </label>
+
+              <button className="text-xs text-sky-500">
+                Forgot Password?
+              </button>
+            </div>
+
+            <div className="flex items-center h-[44px] px-4 rounded-lg border border-slate-200 bg-slate-50">
+
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e)=>setPassword(e.target.value)}
+                className="flex-1 bg-transparent outline-none"
+              />
+
+              <button
+                type="button"
+                onClick={()=>setShowPassword(!showPassword)}
+                className="text-slate-400"
+              >
+                {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
+              </button>
+
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full h-[44px] mt-6 rounded-lg bg-gradient-to-r from-sky-500 to-teal-400 text-white font-semibold shadow-md hover:shadow-lg transition"
           >
-            <h2 className="text-4xl font-bold leading-snug">
-              Your Health,
-              <br />
-              Through a Clearer
-              <br />
-              Lens.
-            </h2>
+            {loading ? "Signing In..." : "Sign In"}
+          </button>
 
-            <p className="text-sm mt-4 opacity-90">
-              Connect with world-class specialists from the comfort of your home.
-            </p>
-          </div>
+          <p className="text-center text-sm mt-6 text-slate-500">
+            Don't have an account yet?{" "}
+            <NavLink to="/register" className="text-sky-500 font-semibold">
+              Register for free
+            </NavLink>
+          </p>
 
-          {/* FORM */}
-          <div className="p-10 flex flex-col justify-center">
-
-            <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
-
-            <p className="text-gray-500 mb-6">
-              Sign in to access your secure health portal.
-            </p>
-
-            {/* EMAIL */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Email Address</label>
-
-              <div className="flex items-center border rounded-xl px-3 py-2 mt-1">
-                <Mail size={18} className="text-gray-400 mr-2" />
-
-                <input
-                  type="email"
-                  placeholder="doctor@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* PASSWORD */}
-            <div className="mb-3">
-
-              <div className="flex justify-between text-sm mb-1">
-                <label className="text-gray-600">Password</label>
-
-                <button className="text-cyan-500 text-xs">
-                  Forgot Password?
-                </button>
-              </div>
-
-              <div className="flex items-center border rounded-xl px-3 py-2">
-                <Lock size={18} className="text-gray-400 mr-2" />
-
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="flex-1 outline-none"
-                />
-
-                <button
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-500"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {/* LOGIN */}
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-medium shadow-md transition disabled:opacity-60"
-            >
-              {loading ? "Signing In..." : "Sign In"}
-            </button>
-
-            <p className="text-sm text-gray-500 text-center mt-6">
-              Don’t have an account?{" "}
-              <NavLink to="/register" className="text-cyan-500 font-medium">
-                Create Account
-              </NavLink>
-            </p>
-
-          </div>
         </div>
+
       </div>
 
-      {/* FOOTER */}
-      <div className="text-center text-xs text-gray-500 pb-6 space-x-6">
-        <span>Privacy Policy</span>
-        <span>Terms of Service</span>
-        <span>Cookie Settings</span>
-        <p className="mt-2">
-          © 2026 HealthSync Health Systems. All rights reserved.
-        </p>
+
+      {/* RIGHT GRADIENT SECTION */}
+      
+      {/* RIGHT GRADIENT SECTION — EXACT STYLE */}
+      <div
+        className="hidden md:flex w-1/2 items-center justify-center px-16 text-white relative overflow-hidden"
+        style={{
+          background: `
+      radial-gradient(circle at 0% 0%, #2dd4bf 0%, transparent 40%),
+      radial-gradient(circle at 100% 0%, #e879f9 0%, transparent 40%),
+      radial-gradient(circle at 50% 100%, #38bdf8 0%, transparent 45%),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)
+    `
+        }}
+      >
+
+        {/* CONTENT */}
+        <div className="max-w-md text-gray-800">
+
+          <h2 className="text-5xl font-bold mb-6 leading-tight">
+            Your Health,
+            <br />
+            <span className="text-sky-500">Simplified</span>
+          </h2>
+
+          <p className="text-lg text-gray-600 mb-10">
+            Connect with verified doctors, manage your
+            medical records, and access healthcare services
+            anytime in one secure platform.
+          </p>
+
+          <div className="space-y-6">
+
+            <div className="flex gap-4">
+              <div>⚡</div>
+              <div>
+                <h3 className="font-semibold">Instant Appointments</h3>
+                <p className="text-gray-600 text-sm">
+                  Book consultations with trusted doctors within minutes.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div>🔒</div>
+              <div>
+                <h3 className="font-semibold">Secure Health Records</h3>
+                <p className="text-gray-600 text-sm">
+                  Your medical data protected with advanced encryption.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div>🤖</div>
+              <div>
+                <h3 className="font-semibold">AI Health Assistant</h3>
+                <p className="text-gray-600 text-sm">
+                  Get instant symptom guidance anytime you need it.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="mt-12 text-sm text-gray-600">
+            ⭐ Trusted by 50,000+ patients nationwide
+          </div>
+
+        </div>
+
       </div>
+      
+
+
     </div>
   );
 };
 
 export default Login;
+

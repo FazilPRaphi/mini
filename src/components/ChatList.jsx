@@ -86,7 +86,7 @@ time
 
                 const { data: otherProfile } = await supabase
                     .from("profiles")
-                    .select("full_name,role")
+                    .select("full_name, role, avatar_url")
                     .eq("id", otherPartyId)
                     .single();
 
@@ -99,16 +99,48 @@ time
                     .eq("seen", false)
                     .neq("sender_id", userId);
 
-                const bookedAt = new Date(booking.booked_at);
-                const expiresAt = new Date(bookedAt.getTime() + 24 * 60 * 60 * 1000);
-                const isExpired = new Date() > expiresAt;
+                // 2. Chat Timeline Logic
+                let appointmentDate = new Date();
+                let opensAt = new Date();
+                let expiresAt = new Date();
+                let hasStarted = false;
+                let isExpired = false;
+
+                if (booking.appointments?.date && booking.appointments?.time) {
+                    // Combine date and time to create a target Date object
+                    // time is usually something like "14:30"
+                    const dateStr = booking.appointments.date;
+                    const timeStr = booking.appointments.time;
+                    appointmentDate = new Date(`${dateStr}T${timeStr}`);
+                    
+                    // 8 hours before appointment
+                    opensAt = new Date(appointmentDate.getTime() - 8 * 60 * 60 * 1000);
+                    // 24 hours after appointment
+                    expiresAt = new Date(appointmentDate.getTime() + 24 * 60 * 60 * 1000);
+
+                    const now = new Date();
+                    hasStarted = now >= opensAt;
+                    isExpired = now >= expiresAt;
+                } else {
+                    // Fallback to booked_at if appointment details are missing (e.g., legacy data)
+                    const bookedAt = new Date(booking.booked_at);
+                    opensAt = bookedAt;
+                    expiresAt = new Date(bookedAt.getTime() + 24 * 60 * 60 * 1000);
+                    const now = new Date();
+                    hasStarted = now >= opensAt;
+                    isExpired = now >= expiresAt;
+                }
 
                 return {
                     ...booking,
                     otherPartyName: otherProfile?.full_name || "Unknown",
                     otherPartyRole: otherProfile?.role || "",
-                    isExpired,
+                    otherPartyAvatar: otherProfile?.avatar_url || null,
+                    appointmentDate,
+                    opensAt,
                     expiresAt,
+                    hasStarted,
+                    isExpired,
                     unreadCount: count || 0
                 };
 
@@ -162,17 +194,37 @@ time
 
 
 
-    const getTimeRemaining = (expiresAt) => {
+    const getTimeStatus = (booking) => {
+        const now = new Date();
 
-        const diff = new Date(expiresAt) - new Date();
+        if (booking.isExpired) {
+            return { text: "Expired", type: "expired" };
+        }
 
-        if (diff <= 0) return "Expired";
+        if (!booking.hasStarted) {
+            // Chat hasn't started yet
+            const diff = booking.opensAt - now;
+            if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hrs = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (days > 0) return { text: `Starts in ${days}d ${hrs}h`, type: "upcoming" };
+                if (hrs > 0) return { text: `Starts in ${hrs}h ${mins}m`, type: "upcoming" };
+                return { text: `Starts in ${mins}m`, type: "upcoming" };
+            }
+            return { text: "Starting soon", type: "upcoming" };
+        }
 
-        const hrs = Math.floor(diff / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        // Chat is active
+        const diff = booking.expiresAt - now;
+        if (diff > 0) {
+            const hrs = Math.floor(diff / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            return { text: `${hrs}h ${mins}m left`, type: "active" };
+        }
 
-        return `${hrs}h ${mins}m left`;
-
+        return { text: "Expired", type: "expired" };
     };
 
 
@@ -276,49 +328,66 @@ time
 
                         {bookings
                             .filter(b => !b.isExpired)
-                            .map(booking => (
-
+                            .map(booking => {
+                                const status = getTimeStatus(booking);
+                                return (
                                 <div
                                     key={booking.id}
-                                    onClick={() => setSelectedBooking(booking)}
-                                    className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition cursor-pointer"
+                                    onClick={() => {
+                                        if (booking.hasStarted) setSelectedBooking(booking);
+                                        else toast.error(`Chat opens 8 hours before the appointment (${new Date(booking.opensAt).toLocaleString()})`);
+                                    }}
+                                    className={`bg-white p-6 rounded-2xl shadow transition ${booking.hasStarted ? 'hover:shadow-lg cursor-pointer' : 'opacity-80 cursor-not-allowed border outline outline-1 outline-gray-200'}`}
                                 >
 
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center gap-4">
 
-                                        <div>
-
-                                            <p className="text-lg font-semibold flex items-center gap-2">
-
-                                                {booking.otherPartyRole === "doctor" ? "Dr. " : ""}
-                                                {booking.otherPartyName}
-
-                                                {booking.unreadCount > 0 && (
-
-                                                    <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-
-                                                        {booking.unreadCount}
-
-                                                    </span>
-
+                                        <div className="flex-1 min-w-0 flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 flex items-center justify-center">
+                                                {booking.otherPartyAvatar ? (
+                                                    <img src={booking.otherPartyAvatar} alt="avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
                                                 )}
+                                            </div>
 
-                                            </p>
+                                            <div className="flex-1 min-w-0">
 
-                                            <p className="text-sm text-gray-500">
-                                                {booking.appointments?.date}
-                                            </p>
+                                                <p className="text-lg font-semibold flex items-center gap-2 truncate">
 
-                                            <p className="text-xs text-gray-400">
-                                                {booking.appointments?.time}
-                                            </p>
+                                                    {booking.otherPartyRole === "doctor" ? "Dr. " : ""}
+                                                    <span className="truncate">{booking.otherPartyName}</span>
+
+                                                    {booking.unreadCount > 0 && booking.hasStarted && (
+
+                                                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+
+                                                            {booking.unreadCount}
+
+                                                        </span>
+
+                                                    )}
+
+                                                </p>
+
+                                                <p className="text-sm text-gray-500 truncate">
+                                                    {booking.appointments?.date} at {booking.appointments?.time}
+                                                </p>
+
+                                            </div>
 
                                         </div>
 
-                                        <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                                        <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 ${
+                                            status.type === 'upcoming' 
+                                                ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                                : 'bg-green-50 text-green-700 border border-green-100'
+                                        }`}>
 
                                             <Clock size={12} />
-                                            {getTimeRemaining(booking.expiresAt)}
+                                            {status.text}
 
                                         </span>
 
@@ -326,7 +395,8 @@ time
 
                                 </div>
 
-                            ))}
+                                );
+                            })}
 
                     </div>
 
@@ -334,7 +404,25 @@ time
 
             )}
 
+            {/* ALL EXPIRED / NO ACTIVE CHATS MESSAGE */}
 
+            {!loading && bookings.length > 0 && bookings.filter(b => !b.isExpired).length === 0 && (
+
+                <div className="bg-white p-10 rounded-2xl shadow text-center border border-gray-100">
+
+                    <MessageCircle size={36} className="mx-auto text-gray-300 mb-3" />
+
+                    <p className="text-lg font-semibold text-gray-700">
+                        No active chats available
+                    </p>
+
+                    <p className="text-sm text-gray-500 mt-1">
+                        All your previous conversations have expired.
+                    </p>
+
+                </div>
+
+            )}
 
             {/* EXPIRED */}
 
@@ -354,32 +442,40 @@ time
 
                                 <div
                                     key={booking.id}
-                                    onClick={() => setSelectedBooking(booking)}
-                                    className="bg-white p-6 rounded-2xl shadow opacity-70 cursor-pointer"
+                                    // onClick={() => setSelectedBooking(booking)} - Cannot open expired chats as per constraints, but keeping read-only could be optional. Let's keep it disabled if expired.
+                                    className="bg-white p-6 rounded-2xl shadow opacity-60 cursor-not-allowed"
                                 >
 
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center gap-4">
 
-                                        <div>
+                                        <div className="flex-1 min-w-0 flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 flex items-center justify-center grayscale">
+                                                {booking.otherPartyAvatar ? (
+                                                    <img src={booking.otherPartyAvatar} alt="avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
+                                                )}
+                                            </div>
 
-                                            <p className="text-lg font-semibold text-gray-600">
+                                            <div className="flex-1 min-w-0">
 
-                                                {booking.otherPartyRole === "doctor" ? "Dr. " : ""}
-                                                {booking.otherPartyName}
+                                                <p className="text-lg font-semibold text-gray-600 truncate flex items-center gap-2">
 
-                                            </p>
+                                                    {booking.otherPartyRole === "doctor" ? "Dr. " : ""}
+                                                    <span className="truncate">{booking.otherPartyName}</span>
 
-                                            <p className="text-sm text-gray-500">
-                                                {booking.appointments?.date}
-                                            </p>
+                                                </p>
 
-                                            <p className="text-xs text-gray-400">
-                                                {booking.appointments?.time}
-                                            </p>
+                                                <p className="text-sm text-gray-500 truncate">
+                                                    {booking.appointments?.date} at {booking.appointments?.time}
+                                                </p>
 
+                                            </div>
                                         </div>
 
-                                        <span className="flex items-center gap-1 text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full">
+                                        <span className="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-full flex-shrink-0 font-semibold">
 
                                             <Clock size={12} />
                                             Expired

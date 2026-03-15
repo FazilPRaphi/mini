@@ -58,15 +58,15 @@ const DoctorDashboardHome = ({ onNavigate }) => {
     }, []);
 
     return (
-        <div className="h-full flex flex-col font-redhat text-[#333] animate-fadeIn">
+        <div className="flex flex-col font-redhat text-[#333] animate-fadeIn">
             {/* Header */}
-            <header className="flex items-center justify-between mb-8">
+            <header className="flex flex-wrap items-start sm:items-center justify-between gap-3 mb-6 sm:mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold">Hi {doctorProfile.full_name?.split(' ')[0] || "Doctor"} 👋,</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold">Hi {doctorProfile.full_name?.split(' ')[0] || "Doctor"} 👋,</h1>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-50">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-50">
                         <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600">
                             <Calendar size={18} />
                         </div>
@@ -79,10 +79,10 @@ const DoctorDashboardHome = ({ onNavigate }) => {
             </header>
 
             {/* Main Content Grid */}
-            <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {/* Left Column (Main) */}
-                <div className="col-span-8 flex flex-col gap-6 overflow-hidden">
+                <div className="col-span-1 lg:col-span-8 flex flex-col gap-6">
 
                     {/* Hero Banner */}
                     <div className="relative h-48 rounded-[32px] bg-gradient-to-r from-[#27AE60] to-[#2ECC71] overflow-hidden p-8 text-white flex items-center shadow-lg">
@@ -170,7 +170,7 @@ const DoctorDashboardHome = ({ onNavigate }) => {
                 </div>
 
                 {/* Right Column (Stats & Sidebar) */}
-                <div className="col-span-4 flex flex-col gap-6 overflow-hidden">
+                <div className="col-span-1 lg:col-span-4 flex flex-col gap-6">
 
                     {/* Compact Stat Card */}
                     <div className="bg-[#9B51E0] rounded-[32px] p-8 text-white relative overflow-hidden shadow-lg">
