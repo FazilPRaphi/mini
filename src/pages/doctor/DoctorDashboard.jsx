@@ -150,7 +150,13 @@ const DoctorDashboard = () => {
         <div className="flex-1 h-full overflow-y-auto no-scrollbar p-6 lg:p-10 pt-20 lg:pt-10">
           <div className="max-w-[1400px] mx-auto w-full h-full">
             {active === "dashboard" && <DoctorDashboardHome onNavigate={setActive} />}
-            {active === "profile" && <Profile defaultEditing={false} />}
+            {active === "profile" && (
+              <Profile 
+                defaultEditing={false} 
+                initialProfile={doctorProfile} 
+                onUpdate={(newProfile) => setDoctorProfile(newProfile)}
+              />
+            )}
             {active === "availability" && <AppointmentCreator />}
             {active === "appointments" && <DoctorAppointments onNavigate={setActive} />}
             {active === "prescriptions" && <DoctorConsultation />}

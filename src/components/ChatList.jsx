@@ -79,10 +79,21 @@ time
 
             (data || []).map(async booking => {
 
-                const otherPartyId =
-                    String(userId).toLowerCase().trim() === String(booking.patient_id).toLowerCase().trim()
+                /* IDENTITY LOGIC */
+                // If I am the doctor, the other party is the patient.
+                // If I am the patient, the other party is the doctor.
+                // This handles edge cases where IDs might be the same or swapped.
+                let otherPartyId;
+                if (role === "doctor") {
+                    otherPartyId = booking.patient_id;
+                } else if (role === "patient") {
+                    otherPartyId = booking.doctor_id;
+                } else {
+                    // Fallback
+                    otherPartyId = String(userId).toLowerCase().trim() === String(booking.patient_id).toLowerCase().trim()
                         ? booking.doctor_id
                         : booking.patient_id;
+                }
 
                 const { data: otherProfile } = await supabase
                     .from("profiles")

@@ -14,7 +14,7 @@ import {
   Heart,
 } from "lucide-react";
 
-const DoctorProfile = ({ defaultEditing = false }) => {
+const DoctorProfile = ({ defaultEditing = false, initialProfile = null, onUpdate = null }) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
     full_name: "",
@@ -53,12 +53,36 @@ const DoctorProfile = ({ defaultEditing = false }) => {
   );
 
   useEffect(() => {
-    const loadProfile = async () => {
+    const fetchProfile = async () => {
+      // If we have an initialProfile (passed from dashboard), use it to avoid extra fetch or identity leak
+      if (initialProfile) {
+        const filled = {
+          full_name: initialProfile.full_name || "",
+          institution: initialProfile.institution || "",
+          speciality: initialProfile.speciality || "",
+          avatar_url: initialProfile.avatar_url || "",
+          doctor_license: initialProfile.doctor_license || "",
+          phone: initialProfile.phone || "",
+        };
+        setProfile(filled);
+        setEditForm(filled);
+        setPageLoading(false);
+        
+        // Still fetch email for security settings
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) setEmail(user.email);
+        return;
+      }
+
+      // Fallback to fetching if no initialProfile provided
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (!user) {
+        setPageLoading(false);
+        return;
+      }
 
       setEmail(user.email);
 
@@ -87,8 +111,8 @@ const DoctorProfile = ({ defaultEditing = false }) => {
       setPageLoading(false);
     };
 
-    loadProfile();
-  }, [defaultEditing]);
+    fetchProfile();
+  }, [defaultEditing, initialProfile]);
 
   const validateProfile = () => {
     if (!editForm.full_name.trim()) return "Full name is required";
@@ -132,6 +156,8 @@ const DoctorProfile = ({ defaultEditing = false }) => {
       toast.success("Profile updated!");
       setProfile({ ...editForm });
       setIsEditing(false);
+
+      if (onUpdate) onUpdate({ ...editForm });
 
       if (defaultEditing) {
         setTimeout(() => navigate("/doctor-dashboard", { replace: true }), 800);
