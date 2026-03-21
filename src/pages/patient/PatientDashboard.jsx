@@ -12,7 +12,7 @@ import MedicalRecords from "./MedicalRecords";
 import NotificationBell from "../../components/NotificationBell";
 import {
   Menu, X, LogOut, LayoutDashboard, CalendarPlus, CalendarCheck,
-  FileText, MessageSquare, ShieldAlert, UserCircle, FileHeart
+  FileText, MessageSquare, ShieldAlert, UserCircle, FileHeart, AlertTriangle, PhoneCall
 } from "lucide-react";
 
 const NAV = [
@@ -26,11 +26,24 @@ const NAV = [
   { key: "settings",       label: "Settings",          icon: UserCircle },
 ];
 
+const EMERGENCY_CONTACTS = [
+  { label: "Ambulance", number: "108", icon: "🚑" },
+  { label: "Police", number: "100", icon: "🚓" },
+  { label: "Fire Force", number: "101", icon: "🚒" },
+  { label: "National Emergency Helpline", number: "112", icon: "☎️" },
+  { label: "Health Helpline", number: "104", icon: "🏥" },
+  { label: "City Care Hospital", number: "+91 80 4567 8910", icon: "👩‍⚕️" },
+  { label: "Sunrise Multispeciality Clinic", number: "+91 44 2789 1100", icon: "🩺" },
+  { label: "Metro Emergency Trauma Center", number: "+91 11 4300 2200", icon: "🚨" },
+];
+
 const PatientDashboard = () => {
   const navigate = useNavigate();
   const [activePage, setActivePage] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
+  const [isEmergencyVisible, setIsEmergencyVisible] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -66,6 +79,32 @@ const PatientDashboard = () => {
   const handleNav = (key) => {
     setActivePage(key);
     setIsMobileMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isEmergencyOpen) return;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsEmergencyVisible(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isEmergencyOpen]);
+
+  useEffect(() => {
+    if (!isEmergencyOpen || isEmergencyVisible) return;
+    const timeout = setTimeout(() => setIsEmergencyOpen(false), 220);
+    return () => clearTimeout(timeout);
+  }, [isEmergencyOpen, isEmergencyVisible]);
+
+  const openEmergencyModal = () => {
+    setIsEmergencyOpen(true);
+    requestAnimationFrame(() => setIsEmergencyVisible(true));
+  };
+
+  const closeEmergencyModal = () => {
+    setIsEmergencyVisible(false);
   };
 
   if (!profile) {
@@ -153,7 +192,22 @@ const PatientDashboard = () => {
           })}
         </nav>
 
-        {/* Profile & Logout */}
+        <div className="px-4 pb-3">
+          <button
+            onClick={openEmergencyModal}
+            className="emergency-pulse w-full flex items-center justify-between gap-3 rounded-2xl bg-red-600 text-white px-4 py-3.5 font-black text-sm tracking-wide shadow-lg shadow-red-200 transition-transform hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200"
+            aria-haspopup="dialog"
+            aria-expanded={isEmergencyOpen}
+            aria-controls="emergency-assistance-dialog"
+          >
+            <span className="flex items-center gap-2.5">
+              <AlertTriangle size={19} />
+              Emergency
+            </span>
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest">24/7</span>
+          </button>
+        </div>
+
         <div className="p-4 mt-auto border-t border-gray-50 bg-gray-50/30">
           <div className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] flex items-center justify-center text-white font-black shadow-md shadow-blue-100 shrink-0 overflow-hidden">
@@ -281,6 +335,75 @@ const PatientDashboard = () => {
           </div>
         </div>
       </main>
+
+      {isEmergencyOpen && (
+        <div
+          className={`fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 transition-all duration-200 ${
+            isEmergencyVisible ? "bg-black/45 backdrop-blur-sm opacity-100" : "bg-black/0 opacity-0"
+          }`}
+          onClick={closeEmergencyModal}
+        >
+          <div
+            id="emergency-assistance-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="emergency-assistance-title"
+            className={`w-full max-w-2xl rounded-3xl border border-red-100 bg-white shadow-2xl overflow-hidden transition-all duration-200 ${
+              isEmergencyVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-red-600 to-rose-600 p-5 sm:p-6 flex items-center justify-between gap-4 text-white">
+              <div>
+                <h2 id="emergency-assistance-title" className="text-2xl font-black tracking-tight">Emergency Assistance</h2>
+                <p className="text-red-100 text-sm font-semibold mt-1">Critical contact numbers available at all times</p>
+              </div>
+              <button
+                onClick={closeEmergencyModal}
+                className="rounded-full p-2 bg-white/15 hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Close emergency assistance"
+                autoFocus
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto no-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {EMERGENCY_CONTACTS.map(({ label, number, icon }) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-2xl border border-red-100 bg-red-50/50 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-red-500 uppercase tracking-widest">{icon} {label}</p>
+                      <a
+                        href={`tel:${number.replace(/\s+/g, "")}`}
+                        className="block mt-1 text-lg font-black text-gray-900 break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 rounded-md"
+                      >
+                        {number}
+                      </a>
+                    </div>
+                    <a
+                      href={`tel:${number.replace(/\s+/g, "")}`}
+                      className="shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200"
+                      aria-label={`Call ${label} on ${number}`}
+                    >
+                      <PhoneCall size={18} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 sm:px-6 pb-6">
+              <button
+                onClick={closeEmergencyModal}
+                className="w-full rounded-xl bg-gray-900 text-white font-bold py-3 hover:bg-black transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-gray-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
