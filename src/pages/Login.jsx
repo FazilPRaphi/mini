@@ -249,7 +249,7 @@ const Login = () => {
             <div className="flex gap-4">
               <div>🤖</div>
               <div>
-                <h3 className="font-semibold">AI Health Assistant</h3>
+                <h3 className="font-semibold">Medical Support Desk</h3>
                 <p className="text-gray-600 text-sm">
                   Get instant symptom guidance anytime you need it.
                 </p>
@@ -259,7 +259,7 @@ const Login = () => {
           </div>
 
           <div className="mt-12 text-sm text-gray-600">
-            ⭐ Trusted by 50,000+ patients nationwide
+            
           </div>
 
         </div>

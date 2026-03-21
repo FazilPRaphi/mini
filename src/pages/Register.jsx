@@ -140,7 +140,7 @@ const Register = () => {
             <div className="flex gap-4">
               <div>🤖</div>
               <div>
-                <h3 className="font-semibold">AI Health Assistant</h3>
+                <h3 className="font-semibold">Medical Support Desk</h3>
                 <p className="text-sm text-slate-600">
                   Get instant symptom guidance anytime you need it.
                 </p>

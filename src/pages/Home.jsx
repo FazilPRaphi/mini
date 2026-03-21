@@ -7,8 +7,8 @@ export default function Home() {
 
   const features = [
     {
-      title: "AI Symptom Assistant",
-      desc: "Describe symptoms and receive instant AI-powered health insights."
+      title: "Symptom Support",
+      desc: "Understand your symptoms and access reliable health guidance instantly."
     },
     {
       title: "Instant Appointment Booking",
@@ -131,8 +131,7 @@ export default function Home() {
 
           {/* DESCRIPTION */}
           <p className="text-gray-600 text-sm sm:text-base mt-4 max-w-xl mx-auto leading-relaxed px-2">
-            Connect with verified doctors instantly, receive AI symptom insights,
-            and book consultations — all in one secure platform.
+            Connect with verified doctors instantly, receive expert-backed symptom insights, and book consultations — all in one secure platform.
           </p>
 
 
