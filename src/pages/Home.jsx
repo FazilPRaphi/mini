@@ -1,348 +1,66 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import logo from "../assets/healthsync-logo.png";
+import React, { useEffect, useRef } from "react";
+import LandingNavbar from "../components/landing/LandingNavbar";
+import HeroSection from "../components/landing/HeroSection";
+import TrustMetrics from "../components/landing/TrustMetrics";
+import FeaturesSection from "../components/landing/FeaturesSection";
+import HowItWorks from "../components/landing/HowItWorks";
+import DoctorShowcase from "../components/landing/DoctorShowcase";
+import Testimonials from "../components/landing/Testimonials";
+import CTASection from "../components/landing/CTASection";
+import Footer from "../components/landing/Footer";
 
 export default function Home() {
-  const navigate = useNavigate();
-
-  const features = [
-    {
-      title: "Symptom Support",
-      desc: "Understand your symptoms and access reliable health guidance instantly."
-    },
-    {
-      title: "Instant Appointment Booking",
-      desc: "Find specialists and book consultations within seconds."
-    },
-    {
-      title: "Verified Medical Professionals",
-      desc: "Consult certified doctors and healthcare experts securely."
-    },
-    {
-      title: "40+ Medical Specialisations",
-      desc: "Access cardiology, dermatology, neurology and more."
-    }
-  ];
-
-  const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
+  const sectionsRef = useRef([]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex(prev => {
-        if (prev === features.length - 1) {
-          setDirection(-1);
-          return prev - 1;
-        }
-        if (prev === 0) {
-          setDirection(1);
-          return prev + 1;
-        }
-        return prev + direction;
-      });
-    }, 3500);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
+    );
 
-    return () => clearInterval(interval);
-  }, [direction, features.length]);
+    const sections = document.querySelectorAll(".reveal-section");
+    sections.forEach((section) => observer.observe(section));
+
+    return () => sections.forEach((section) => observer.unobserve(section));
+  }, []);
 
   return (
-    <div className="bg-[#F4FAFC] text-[#0F172A] min-h-screen flex flex-col overflow-x-hidden">
+    <div className="bg-white text-slate-900 min-h-screen font-sans overflow-x-hidden landing-scroll">
+      <LandingNavbar />
 
-      {/* NAVBAR */}
-      <header className="max-w-7xl mx-auto w-full px-8 py-5 flex items-center justify-between">
+      <HeroSection />
 
-        <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            className="w-9 h-9 mix-blend-multiply opacity-90"
-            alt="HealthSync"
-          />
-          <span className="font-bold text-2xl text-sky-600 tracking-tight">
-            HealthSync
-          </span>
-        </div>
+      <div className="reveal-section">
+        <TrustMetrics />
+      </div>
 
-        {/* hide buttons on mobile */}
-        <div className="hidden sm:flex items-center gap-4">
+      <div className="reveal-section">
+        <FeaturesSection />
+      </div>
 
-          <button
-            onClick={() => navigate("/login")}
-            className="
-            px-5 py-2
-            rounded-xl
-            text-white
-            font-semibold
-            text-sm
-            bg-gradient-to-r from-indigo-500 to-sky-500
-            shadow-md shadow-indigo-300/30
-            hover:scale-[1.05]
-            hover:shadow-lg
-            active:scale-[0.94]
-            transition-all duration-200
-            "
-          >
-            Login
-          </button>
+      <div className="reveal-section">
+        <HowItWorks />
+      </div>
 
-          <button
-            onClick={() => navigate("/register")}
-            className="
-            px-5 py-2
-            rounded-xl
-            text-white
-            font-semibold
-            text-sm
-            bg-gradient-to-r from-sky-500 to-teal-400
-            shadow-md shadow-sky-300/30
-            hover:scale-[1.05]
-            hover:shadow-lg
-            active:scale-[0.94]
-            transition-all duration-200
-            "
-          >
-            Sign Up
-          </button>
+      <div className="reveal-section">
+        <DoctorShowcase />
+      </div>
 
-        </div>
-      </header>
+      <div className="reveal-section">
+        <Testimonials />
+      </div>
 
+      <div className="reveal-section">
+        <CTASection />
+      </div>
 
-
-      {/* HERO */}
-      <section className="flex-1 flex items-center justify-center">
-
-        <div className="max-w-5xl mx-auto px-6 text-center">
-
-          {/* TITLE */}
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold leading-[1.05] tracking-tight">
-
-            <span className="text-[#0F172A]">
-              Primary
-            </span>
-
-            <br />
-
-            <span className="bg-gradient-to-r from-sky-500 to-teal-400 bg-clip-text text-transparent">
-              Healthcare Platform
-            </span>
-
-          </h1>
-
-
-          {/* DESCRIPTION */}
-          <p className="text-gray-600 text-sm sm:text-base mt-4 max-w-xl mx-auto leading-relaxed px-2">
-            Connect with verified doctors instantly, receive expert-backed symptom insights, and book consultations — all in one secure platform.
-          </p>
-
-
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-
-            <button
-              onClick={() => navigate("/register")}
-              className="
-              px-7 py-2.5
-              rounded-xl
-              text-white
-              font-semibold
-              text-[15px]
-              bg-gradient-to-r from-sky-500 to-teal-400
-              shadow-lg shadow-sky-300/30
-              hover:scale-[1.05]
-              hover:shadow-xl
-              active:scale-[0.95]
-              transition-all duration-200
-              "
-            >
-              Get Started
-            </button>
-
-            <button
-              onClick={() => navigate("/login")}
-              className="
-              px-7 py-2.5
-              rounded-xl
-              text-white
-              font-semibold
-              text-[15px]
-              bg-gradient-to-r from-indigo-500 to-sky-500
-              shadow-lg shadow-indigo-300/30
-              hover:scale-[1.05]
-              hover:shadow-xl
-              active:scale-[0.95]
-              transition-all duration-200
-              "
-            >
-              Login
-            </button>
-
-          </div>
-
-
-
-          {/* FEATURE SLIDER (for sm+ screens) */}
-          <div className="mt-10 -translate-y-[7px] hidden sm:block">
-
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-
-              {/* Gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-sky-400 via-teal-400 to-indigo-400 opacity-90" />
-
-              {/* Glass */}
-              <div className="absolute inset-0 backdrop-blur-xl bg-white/10" />
-
-              <div className="relative overflow-hidden">
-
-                <div
-                  className="flex transition-transform duration-700 ease-in-out"
-                  style={{
-                    transform: `translateX(-${index * 100}%)`
-                  }}
-                >
-
-                  {features.map((feature, i) => (
-
-                    <div
-                      key={i}
-                      className="min-w-full flex flex-col md:flex-row items-center justify-between gap-10 px-12 py-12 text-white"
-                    >
-
-                      {/* LEFT */}
-                      <div className="text-center md:text-left max-w-md">
-
-                        <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                          {feature.title}
-                        </h3>
-
-                        <p className="text-white/90 leading-relaxed">
-                          {feature.desc}
-                        </p>
-
-                        <button
-                          onClick={() => navigate("/register")}
-                          className="
-                          mt-6
-                          px-6 py-3
-                          bg-white
-                          text-sky-600
-                          rounded-lg
-                          font-semibold
-                          hover:scale-[1.05]
-                          active:scale-[0.95]
-                          transition-all
-                          "
-                        >
-                          Explore Feature
-                        </button>
-
-                      </div>
-
-
-
-                      {/* RIGHT CARD */}
-                      <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-8 w-full max-w-[260px] shadow-xl text-white">
-
-                        <div className="flex items-center gap-2 mb-4">
-                          <img src={logo} className="w-6 h-6 mix-blend-screen" alt="HealthSync logo" />
-                          <span className="font-semibold">HealthSync</span>
-                        </div>
-
-                        <div className="space-y-3 text-sm">
-
-                          <div className="bg-white/20 px-3 py-2 rounded-lg">
-                            Smart diagnostics
-                          </div>
-
-                          <div className="bg-white/20 px-3 py-2 rounded-lg">
-                            Secure consultations
-                          </div>
-
-                          <div className="bg-white/20 px-3 py-2 rounded-lg">
-                            Verified specialists
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  ))}
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* FEATURE CARDS (for mobile screens) - PREMIUM DESIGN */}
-          <div className="mt-14 px-4 block sm:hidden pb-8">
-            {/* Features Grid */}
-            <div className="space-y-4">
-              {features.map((feature, i) => (
-                <div
-                  key={i}
-                  className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 border border-sky-100 overflow-hidden hover:border-sky-300"
-                >
-                  {/* Gradient Background Effect on Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-transparent to-teal-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                  {/* Top accent bar */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 to-teal-400" />
-
-                  {/* Content */}
-                  <div className="relative z-10">
-                    {/* Icon */}
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-sky-400 to-teal-400 mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-bold text-base text-gray-900 mb-2 group-hover:text-sky-600 transition-colors duration-300">
-                      {feature.title}
-                    </h3>
-
-                    {/* Description */}
-                    <p className="text-sm text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors">
-                      {feature.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Explore Button */}
-            <button
-              onClick={() => navigate("/register")}
-              className="
-              w-full
-              mt-8
-              px-8 py-4
-              bg-gradient-to-r from-sky-500 to-teal-400
-              text-white
-              rounded-xl
-              font-bold
-              text-base
-              shadow-lg shadow-sky-300/40
-              hover:scale-[1.02]
-              hover:shadow-xl
-              active:scale-[0.98]
-              transition-all duration-200
-              "
-            >
-              Explore All Features
-            </button>
-          </div>
-
-        </div>
-
-      </section>
-
+      <Footer />
     </div>
   );
 }
