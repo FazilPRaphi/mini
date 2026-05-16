@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import LandingNavbar from "../components/landing/LandingNavbar";
 import Footer from "../components/landing/Footer";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Mail,
   Phone,
@@ -9,6 +10,7 @@ import {
   ShieldCheck,
   MessageSquare,
   ChevronDown,
+  Check,
   Sparkles,
   Activity,
   HeartPulse,
@@ -63,9 +65,24 @@ const faqs = [
   },
 ];
 
+const contactTypeOptions = [
+  { value: "patient", label: "Patient" },
+  { value: "doctor", label: "Doctor" },
+  { value: "clinic", label: "Clinic / Hospital" },
+  { value: "partner", label: "Partner" },
+];
+const MotionDiv = motion.div;
+const MotionSpan = motion.span;
+
 export default function Contact() {
   const [activeFaq, setActiveFaq] = useState(0);
   const [formState, setFormState] = useState("idle");
+  const [selectedType, setSelectedType] = useState("");
+  const [isTypeOpen, setIsTypeOpen] = useState(false);
+  const [highlightedTypeIndex, setHighlightedTypeIndex] = useState(-1);
+  const [typeError, setTypeError] = useState("");
+  const typeSelectRef = useRef(null);
+  const typeTriggerRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -89,6 +106,16 @@ export default function Contact() {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
+    if (!e.currentTarget.reportValidity()) {
+      return;
+    }
+    if (!selectedType) {
+      setTypeError("Please select an option");
+      setIsTypeOpen(true);
+      typeTriggerRef.current?.focus();
+      return;
+    }
+    setTypeError("");
     setFormState("submitting");
     setTimeout(() => {
       setFormState("success");
@@ -98,6 +125,78 @@ export default function Contact() {
 
   const inputClassName =
     "w-full px-5 py-3.5 bg-white/80 border border-cyan-100/70 rounded-xl text-[15px] text-slate-900 outline-none focus:bg-white focus:border-cyan-400 focus:shadow-[0_0_0_4px_rgba(34,211,238,0.12)] transition-all placeholder:text-slate-400";
+  const selectedTypeLabel =
+    contactTypeOptions.find((option) => option.value === selectedType)?.label ||
+    "";
+
+  const openTypeSelect = () => {
+    setIsTypeOpen(true);
+    const selectedIndex = contactTypeOptions.findIndex(
+      (option) => option.value === selectedType
+    );
+    setHighlightedTypeIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  };
+
+  const closeTypeSelect = () => {
+    setIsTypeOpen(false);
+    setHighlightedTypeIndex(-1);
+  };
+
+  const selectTypeOption = (value) => {
+    setSelectedType(value);
+    setTypeError("");
+    closeTypeSelect();
+  };
+
+  const handleTypeTriggerKeyDown = (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isTypeOpen) {
+        openTypeSelect();
+      } else {
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setHighlightedTypeIndex((prev) => {
+          const current = prev < 0 ? 0 : prev;
+          return (current + direction + contactTypeOptions.length) % contactTypeOptions.length;
+        });
+      }
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (!isTypeOpen) {
+        openTypeSelect();
+      } else if (highlightedTypeIndex >= 0) {
+        selectTypeOption(contactTypeOptions[highlightedTypeIndex].value);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeTypeSelect();
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isTypeOpen &&
+        typeSelectRef.current &&
+        !typeSelectRef.current.contains(event.target)
+      ) {
+        closeTypeSelect();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isTypeOpen]);
 
   return (
     <div className="bg-slate-50 text-slate-900 min-h-screen font-sans overflow-x-hidden landing-scroll selection:bg-cyan-200 selection:text-cyan-900">
@@ -271,19 +370,103 @@ export default function Contact() {
                       <label htmlFor="type" className="text-[14px] font-bold text-slate-700 ml-1">
                         I am a...
                       </label>
-                      <div className="relative">
-                        <select id="type" required defaultValue="" className={`${inputClassName} appearance-none`}>
-                          <option value="" disabled className="text-slate-400">
-                            Select an option
-                          </option>
-                          <option value="patient">Patient</option>
-                          <option value="doctor">Doctor</option>
-                          <option value="clinic">Clinic / Hospital</option>
-                          <option value="partner">Partner</option>
-                        </select>
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <div className="relative" ref={typeSelectRef}>
+                        <button
+                          id="type"
+                          type="button"
+                          ref={typeTriggerRef}
+                          aria-haspopup="listbox"
+                          aria-expanded={isTypeOpen}
+                          aria-controls="contact-type-listbox"
+                          onClick={() => {
+                            if (isTypeOpen) {
+                              closeTypeSelect();
+                            } else {
+                              openTypeSelect();
+                            }
+                          }}
+                          onKeyDown={handleTypeTriggerKeyDown}
+                          className={`${inputClassName} appearance-none text-left pr-12 ${
+                            typeError
+                              ? "border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(251,113,133,0.14)]"
+                              : ""
+                          }`}
+                        >
+                          <span
+                            className={
+                              selectedTypeLabel
+                                ? "text-slate-900"
+                                : "text-slate-400"
+                            }
+                          >
+                            {selectedTypeLabel || "Select an option"}
+                          </span>
+                        </button>
+
+                        <MotionDiv
+                          className={`absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isTypeOpen ? "text-cyan-600" : "text-slate-400"
+                          }`}
+                          animate={{ rotate: isTypeOpen ? 180 : 0 }}
+                          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        >
                           <ChevronDown size={18} />
-                        </div>
+                        </MotionDiv>
+
+                        <AnimatePresence>
+                          {isTypeOpen && (
+                            <MotionDiv
+                              id="contact-type-listbox"
+                              role="listbox"
+                              aria-labelledby="type"
+                              className="absolute z-30 mt-2 w-full rounded-2xl border border-cyan-100/70 bg-white/90 backdrop-blur-xl shadow-[0_16px_40px_rgba(15,23,42,0.14),0_2px_8px_rgba(15,23,42,0.06)] p-1.5"
+                              initial={{ opacity: 0, y: -6, scale: 0.985 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -4, scale: 0.985 }}
+                              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                            >
+                              {contactTypeOptions.map((option, index) => {
+                                const isSelected = selectedType === option.value;
+                                const isActive = highlightedTypeIndex === index;
+
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    onMouseEnter={() => setHighlightedTypeIndex(index)}
+                                    onClick={() => selectTypeOption(option.value)}
+                                    className={`w-full flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-semibold transition-all duration-150 ${
+                                      isActive
+                                        ? "bg-cyan-50 text-cyan-700"
+                                        : isSelected
+                                        ? "bg-teal-50/80 text-teal-700"
+                                        : "text-slate-600 hover:bg-cyan-50/70 hover:text-cyan-700"
+                                    }`}
+                                  >
+                                    <span>{option.label}</span>
+                                    <MotionSpan
+                                      animate={{ opacity: isSelected ? 1 : 0, scale: isSelected ? 1 : 0.85 }}
+                                      transition={{ duration: 0.16 }}
+                                      className={`${
+                                        isSelected ? "text-teal-600" : "text-transparent"
+                                      }`}
+                                    >
+                                      <Check size={16} />
+                                    </MotionSpan>
+                                  </button>
+                                );
+                              })}
+                            </MotionDiv>
+                          )}
+                        </AnimatePresence>
+
+                        {typeError && (
+                          <p className="mt-1.5 ml-1 text-[12px] font-semibold text-rose-500">
+                            {typeError}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -314,9 +497,8 @@ export default function Contact() {
                     className="w-full btn-premium group relative px-8 py-4 text-[15px] font-semibold text-white bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
                   >
                     <span
-                      className={`flex items-center justify-center gap-2 transition-opacity duration-300 ${
-                        formState === "submitting" ? "opacity-0" : "opacity-100"
-                      }`}
+                      className={`flex items-center justify-center gap-2 transition-opacity duration-300 ${formState === "submitting" ? "opacity-0" : "opacity-100"
+                        }`}
                     >
                       Send Message
                       <MessageSquare size={18} />
@@ -347,11 +529,10 @@ export default function Contact() {
                   return (
                     <article
                       key={faq.q}
-                      className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${
-                        isOpen
+                      className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${isOpen
                           ? "border-cyan-200 bg-white shadow-premium"
                           : "border-slate-200 bg-slate-50 hover:bg-white hover:border-cyan-100 hover:shadow-md"
-                      }`}
+                        }`}
                     >
                       <button
                         onClick={() => setActiveFaq(isOpen ? null : index)}
@@ -360,18 +541,16 @@ export default function Contact() {
                         aria-controls={`faq-panel-${index}`}
                       >
                         <span
-                          className={`text-[15px] sm:text-[15.5px] font-bold leading-snug transition-colors duration-300 ${
-                            isOpen ? "text-cyan-700" : "text-slate-800 group-hover:text-cyan-700"
-                          }`}
+                          className={`text-[15px] sm:text-[15.5px] font-bold leading-snug transition-colors duration-300 ${isOpen ? "text-cyan-700" : "text-slate-800 group-hover:text-cyan-700"
+                            }`}
                         >
                           {faq.q}
                         </span>
                         <span
-                          className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center transition-all duration-300 ${
-                            isOpen
+                          className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center transition-all duration-300 ${isOpen
                               ? "border-cyan-200 bg-cyan-50 text-cyan-600"
                               : "border-slate-200 bg-white text-slate-400 group-hover:border-cyan-100 group-hover:text-cyan-500"
-                          }`}
+                            }`}
                         >
                           <ChevronDown size={18} className={`transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
                         </span>

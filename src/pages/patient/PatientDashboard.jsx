@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import healthsyncLogo from "../../assets/healthsync-logo.png";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -36,6 +37,7 @@ const EMERGENCY_CONTACTS = [
   { label: "Sunrise Multispeciality Clinic", number: "+91 44 2789 1100", icon: "🩺" },
   { label: "Metro Emergency Trauma Center", number: "+91 11 4300 2200", icon: "🚨" },
 ];
+const MotionDiv = motion.div;
 
 const PatientDashboard = () => {
   const navigate = useNavigate();
@@ -258,21 +260,144 @@ const PatientDashboard = () => {
                 </div>
 
                 {/* Hero banner */}
-                <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] p-8 flex items-center justify-between flex-shrink-0 shadow-lg shadow-cyan-100">
-                  <div>
+                <div className="relative isolate rounded-2xl overflow-hidden bg-gradient-to-br from-[#0BC5EA] to-[#2B6CB0] p-8 flex items-center justify-between flex-shrink-0 shadow-lg shadow-cyan-100">
+                  {/* Desktop-only premium depth layers */}
+                  <div className="pointer-events-none absolute inset-0 hidden lg:block">
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage:
+                          "radial-gradient(82% 118% at 20% 26%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0) 54%), radial-gradient(88% 126% at 79% 58%, rgba(125,211,252,0.24) 0%, rgba(125,211,252,0) 66%), radial-gradient(116% 128% at 52% -15%, rgba(224,242,254,0.18) 0%, rgba(224,242,254,0) 50%)",
+                      }}
+                    />
+
+                    <div
+                      className="absolute inset-0 mix-blend-screen opacity-52"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(106deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.02) 34%, rgba(186,230,253,0.10) 62%, rgba(186,230,253,0) 100%), linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 48%, rgba(30,64,175,0.15) 100%)",
+                      }}
+                    />
+
+                    <div className="absolute inset-3 rounded-[18px] border border-white/12 bg-white/[0.03] backdrop-blur-[1.5px]" />
+                    <div
+                      className="absolute inset-0 rounded-2xl"
+                      style={{
+                        backgroundImage:
+                          "radial-gradient(122% 142% at 50% 116%, rgba(10,35,83,0.28) 0%, rgba(10,35,83,0) 58%), radial-gradient(108% 122% at -8% 54%, rgba(13,57,120,0.20) 0%, rgba(13,57,120,0) 62%), radial-gradient(108% 122% at 108% 54%, rgba(13,57,120,0.20) 0%, rgba(13,57,120,0) 62%)",
+                      }}
+                    />
+
+                    <div
+                      className="absolute inset-0 rounded-2xl"
+                      style={{
+                        backgroundImage:
+                          "radial-gradient(70% 100% at 74% 50%, rgba(240,249,255,0.22) 0%, rgba(240,249,255,0.02) 36%, rgba(240,249,255,0) 68%)",
+                      }}
+                    />
+
+                    <MotionDiv
+                      className="absolute -left-24 -top-16 h-56 w-56 rounded-full bg-cyan-100/24 blur-3xl transform-gpu"
+                      animate={{ x: [0, 6, 0], y: [0, 3, 0] }}
+                      transition={{ duration: 34, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform" }}
+                    />
+                    <MotionDiv
+                      className="absolute right-24 top-1/2 h-44 w-44 -translate-y-1/2 rounded-full bg-blue-100/15 blur-3xl transform-gpu"
+                      animate={{ x: [0, -6, 0], y: [0, -4, 0] }}
+                      transition={{ duration: 38, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform" }}
+                    />
+                    <MotionDiv
+                      className="absolute right-24 bottom-5 h-24 w-60 rounded-full bg-white/10 blur-2xl transform-gpu"
+                      animate={{ x: [0, 5, 0], opacity: [0.2, 0.28, 0.2] }}
+                      transition={{ duration: 36, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform, opacity" }}
+                    />
+
+                    <div className="absolute right-[12%] top-[24%] h-24 w-24 rounded-full border border-cyan-100/18 bg-cyan-50/[0.04] blur-[0.2px]" />
+                    <div className="absolute right-[30%] bottom-[14%] h-16 w-16 rounded-full border border-blue-100/16 bg-blue-50/[0.03] blur-[0.2px]" />
+
+                    <MotionDiv
+                      className="absolute inset-0 transform-gpu"
+                      animate={{ x: [0, 6, 0], y: [0, -2, 0] }}
+                      transition={{ duration: 44, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform" }}
+                    >
+                      <svg className="h-full w-full opacity-[0.15]" viewBox="0 0 1200 240" fill="none" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M390 54C448 30 504 35 558 56C612 77 666 81 724 58C782 35 840 36 898 62C956 88 1014 92 1072 70" stroke="rgba(240,249,255,0.52)" strokeWidth="1.05" />
+                        <path d="M390 74C448 98 504 99 558 77C612 55 666 50 724 71C782 92 840 92 898 68C956 44 1014 43 1072 64" stroke="rgba(191,219,254,0.38)" strokeWidth="0.95" />
+                        <path d="M426 61L426 68M454 52L454 60M482 49L482 57M510 53L510 60M538 63L538 70M566 73L566 80M594 81L594 88M622 84L622 91M650 81L650 88M678 73L678 80M706 63L706 70M734 53L734 60M762 49L762 57M790 52L790 60M818 61L818 68M846 72L846 79M874 81L874 88M902 85L902 92M930 82L930 89M958 73L958 80M986 61L986 68" stroke="rgba(224,242,254,0.28)" strokeWidth="0.8" strokeLinecap="round" />
+                      </svg>
+                    </MotionDiv>
+
+                    <MotionDiv
+                      className="absolute inset-0 transform-gpu"
+                      animate={{ x: [0, 7, 0] }}
+                      transition={{ duration: 48, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform" }}
+                    >
+                      <svg className="h-full w-full opacity-[0.16]" viewBox="0 0 1200 240" fill="none" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M394 164H468L490 152L504 176L524 138L546 164H584L608 156L628 172L648 164H678L700 160L720 168L744 150L766 164H1078" stroke="rgba(236,254,255,0.46)" strokeWidth="1.05" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M394 181H450L472 174L492 188L510 168L530 181H566L590 176L612 186L636 173L658 181H1078" stroke="rgba(191,219,254,0.28)" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </MotionDiv>
+
+                    <MotionDiv
+                      className="absolute inset-0 transform-gpu"
+                      animate={{ x: [0, -4, 0], y: [0, 2, 0] }}
+                      transition={{ duration: 52, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform" }}
+                    >
+                      <svg className="h-full w-full opacity-[0.14]" viewBox="0 0 1200 240" fill="none" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M790 114L832 96L870 106L902 84L942 96L970 76L1012 86L1040 70L1086 84" stroke="rgba(224,242,254,0.4)" strokeWidth="0.9" />
+                        <path d="M790 114L834 142L868 132L904 154L944 144L972 164L1012 154L1042 170L1086 160" stroke="rgba(207,250,254,0.3)" strokeWidth="0.82" />
+                        <circle cx="832" cy="96" r="2.1" fill="rgba(255,255,255,0.62)" />
+                        <circle cx="902" cy="84" r="1.9" fill="rgba(207,250,254,0.56)" />
+                        <circle cx="970" cy="76" r="1.9" fill="rgba(224,242,254,0.52)" />
+                        <circle cx="1040" cy="70" r="2.1" fill="rgba(255,255,255,0.58)" />
+                        <circle cx="868" cy="132" r="1.7" fill="rgba(191,219,254,0.5)" />
+                        <circle cx="944" cy="144" r="1.7" fill="rgba(191,219,254,0.5)" />
+                        <circle cx="1012" cy="154" r="1.7" fill="rgba(207,250,254,0.48)" />
+                      </svg>
+                    </MotionDiv>
+
+                    <MotionDiv
+                      className="absolute left-[40%] top-10 h-1.5 w-1.5 rounded-full bg-white/70 blur-[1px] transform-gpu"
+                      animate={{ y: [0, -3, 0], opacity: [0.22, 0.36, 0.22] }}
+                      transition={{ duration: 24, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform, opacity" }}
+                    />
+                    <MotionDiv
+                      className="absolute right-[22%] top-[28%] h-1.5 w-1.5 rounded-full bg-cyan-100/80 blur-[1px] transform-gpu"
+                      animate={{ y: [0, 2, 0], opacity: [0.14, 0.28, 0.14] }}
+                      transition={{ duration: 28, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform, opacity" }}
+                    />
+                    <MotionDiv
+                      className="absolute right-[30%] bottom-[22%] h-2 w-2 rounded-full bg-blue-50/60 blur-[1px] transform-gpu"
+                      animate={{ y: [0, -2, 0], opacity: [0.12, 0.24, 0.12] }}
+                      transition={{ duration: 30, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+                      style={{ willChange: "transform, opacity" }}
+                    />
+                  </div>
+
+                  <div className="relative z-10">
                     <h2 className="text-white font-black text-2xl mb-2">Manage your health easily</h2>
                     <p className="text-cyan-100 text-sm mb-5">Book appointments, chat with doctors, and track your records.</p>
                     <button
                       onClick={() => handleNav("appointments")}
-                      className="bg-white text-[#0BC5EA] font-bold px-6 py-2.5 rounded-xl shadow hover:shadow-md transition-all hover:scale-105 text-sm"
+                      className="bg-white text-[#0BC5EA] font-bold px-6 py-2.5 rounded-xl shadow hover:shadow-md transform-gpu will-change-transform transition-[transform,box-shadow] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-[0.995] text-sm"
                     >
                       Book Appointment
                     </button>
                   </div>
-                  <div className="hidden sm:block opacity-20">
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 4L4 8v8l8 4 8-4V8z" fill="white" />
-                      <circle cx="12" cy="12" r="5" fill="white" />
+                  <div className="relative z-10 hidden lg:block opacity-28">
+                    <svg width="136" height="108" viewBox="0 0 136 108" fill="none" aria-hidden="true">
+                      <path d="M2 56C17 43 31 39 47 42C62 46 74 58 90 63C105 68 119 65 134 53" stroke="rgba(255,255,255,0.54)" strokeWidth="1.1" />
+                      <path d="M4 76C20 66 35 63 51 67C66 71 78 82 94 86C109 89 122 87 134 79" stroke="rgba(224,242,254,0.42)" strokeWidth="0.95" />
+                      <circle cx="48" cy="43" r="2.5" fill="rgba(255,255,255,0.56)" />
+                      <circle cx="92" cy="63" r="2.4" fill="rgba(207,250,254,0.48)" />
                     </svg>
                   </div>
                 </div>
