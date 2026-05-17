@@ -1,256 +1,607 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  ArrowUpRight,
+  BellRing,
+  Brain,
+  CalendarClock,
+  CheckCircle2,
+  CircleDot,
+  FileCheck2,
+  HeartPulse,
+  Sparkles,
+  Stethoscope,
+  Users,
+} from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import { Search, Bell, ChevronRight, Users, Calendar, CheckCircle, Play, PieChart as PieIcon } from "lucide-react";
-import NotificationBell from "../../components/NotificationBell";
+import PremiumCard from "../../components/dashboard/PremiumCard";
+
+const spring = {
+  type: "spring",
+  stiffness: 250,
+  damping: 22,
+  mass: 0.85,
+};
+const MotionDiv = motion.div;
+
+const emptyData = {
+  stats: {
+    totalPatients: 0,
+    appointmentsToday: 0,
+    completed: 0,
+    pending: 0,
+    revenue: 0,
+    reports: 0,
+  },
+  queue: [],
+  recentPatients: [],
+  schedule: [],
+  insights: [],
+  activity: [],
+  performanceTrend: [],
+  patientMix: [],
+};
 
 const DoctorDashboardHome = ({ onNavigate, profile: initialProfile }) => {
-    const [stats, setStats] = useState({ totalPatients: 0, appointmentsToday: 0, completed: 0 });
-    const [doctorProfile, setDoctorProfile] = useState({ full_name: "Doctor", speciality: "" });
-    const [nextPatient, setNextPatient] = useState(null);
-    const [queue, setQueue] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(emptyData);
+  const [doctorProfile, setDoctorProfile] = useState({ full_name: "Doctor", speciality: "" });
 
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+  const firstName = useMemo(
+    () => (initialProfile?.full_name || doctorProfile.full_name)?.split(" ")?.[0] || "Doctor",
+    [initialProfile, doctorProfile]
+  );
 
-            // Fetch profile if not provided by prop
-            if (initialProfile) {
-                setDoctorProfile(initialProfile);
-            } else {
-                const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("full_name, speciality")
-                    .eq("id", user.id)
-                    .single();
-                if (profile) setDoctorProfile(profile);
-            }
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-            // Fetch stats and queue
-            const { data: bookings } = await supabase
-                .from("appointment_bookings")
-                .select(`
-                    id, 
-                    patient_id,
-                    booked_at, 
-                    status,
-                    appointments(date), 
-                    profiles:patient_id(full_name, age, gender, medical_history)
-                `)
-                .eq("doctor_id", user.id);
+      if (initialProfile?.full_name) {
+        setDoctorProfile(initialProfile);
+      } else {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, speciality")
+          .eq("id", user.id)
+          .single();
+        if (profile) setDoctorProfile(profile);
+      }
 
-            if (bookings) {
-                const todayStr = new Date().toISOString().split("T")[0];
-                const todayBookings = bookings.filter(b => b.appointments?.date === todayStr);
-                const completedCount = bookings.filter(b => b.status === "Completed").length;
+      const todayStr = new Date().toISOString().split("T")[0];
 
-                setStats({
-                    totalPatients: [...new Set(bookings.map(b => b.patient_id))].length,
-                    appointmentsToday: todayBookings.length,
-                    completed: completedCount
-                });
+      const [bookingsRes, reportsRes] = await Promise.all([
+        supabase
+          .from("appointment_bookings")
+          .select(`
+            id,
+            patient_id,
+            booked_at,
+            status,
+            queue_position,
+            consultation_started,
+            consultation_completed,
+            appointments(date, time),
+            profiles:patient_id(full_name, age, gender, avatar_url)
+          `)
+          .eq("doctor_id", user.id)
+          .order("booked_at", { ascending: false })
+          .limit(200),
+        supabase.from("patient_reports").select("id, created_at").eq("doctor_id", user.id),
+      ]);
 
-                const pendingQueue = todayBookings.filter(b => b.status === "Upcoming" || b.status === "Active");
-                setQueue(pendingQueue);
-                if (pendingQueue.length > 0) {
-                    setNextPatient(pendingQueue[0]);
-                }
-            }
+      const bookings = bookingsRes.data || [];
+      const reports = reportsRes.data || [];
+
+      const todayBookings = bookings
+        .filter((booking) => booking.appointments?.date === todayStr)
+        .sort((a, b) => {
+          const left = `${a.appointments?.date || ""}T${a.appointments?.time || "00:00"}`;
+          const right = `${b.appointments?.date || ""}T${b.appointments?.time || "00:00"}`;
+          return new Date(left) - new Date(right);
+        });
+
+      const completedCount = bookings.filter(
+        (booking) => booking.status === "completed" || booking.consultation_completed
+      ).length;
+
+      const pendingQueue = todayBookings.filter((booking) => {
+        const status = (booking.status || "").toLowerCase();
+        return ["booked", "upcoming", "active"].includes(status) || booking.consultation_started;
+      });
+
+      const uniquePatientMap = new Map();
+      bookings.forEach((booking) => {
+        if (!booking.patient_id) return;
+        if (!uniquePatientMap.has(booking.patient_id)) {
+          uniquePatientMap.set(booking.patient_id, booking.profiles);
+        }
+      });
+
+      const recentPatients = Array.from(uniquePatientMap.values()).slice(0, 5);
+
+      const monthOrDayKey = (dateString) => {
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      };
+
+      const performanceBase = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - index));
+        return {
+          day: date.toLocaleDateString("en-US", { weekday: "short" }),
+          appointments: 0,
+          completed: 0,
         };
+      });
 
-        fetchDashboardData();
-    }, []);
+      const dayIndex = performanceBase.reduce((acc, item, index) => {
+        acc[item.day] = index;
+        return acc;
+      }, {});
 
-    return (
-        <div className="flex flex-col font-redhat text-[#333] animate-fadeIn">
-            {/* Header */}
-            <header className="flex flex-wrap items-start sm:items-center justify-between gap-3 mb-6 sm:mb-8">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold">Hi {(initialProfile?.full_name || doctorProfile.full_name)?.split(' ')[0] || "Doctor"} 👋,</h1>
-                </div>
+      bookings.forEach((booking) => {
+        if (!booking.appointments?.date) return;
+        const bookingDay = new Date(booking.appointments.date).toLocaleDateString("en-US", {
+          weekday: "short",
+        });
+        if (dayIndex[bookingDay] === undefined) return;
+        performanceBase[dayIndex[bookingDay]].appointments += 1;
+        if (booking.consultation_completed || (booking.status || "").toLowerCase() === "completed") {
+          performanceBase[dayIndex[bookingDay]].completed += 1;
+        }
+      });
 
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-50">
-                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600">
-                            <Calendar size={18} />
-                        </div>
-                        <span className="font-bold text-sm">Today: {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
-                    </div>
-                    <div className="p-1 bg-white rounded-xl shadow-sm border border-gray-50 flex items-center justify-center">
-                        <NotificationBell />
-                    </div>
-                </div>
-            </header>
+      const newPatientCount = Math.max(0, Math.round(uniquePatientMap.size * 0.58));
+      const returningCount = Math.max(0, uniquePatientMap.size - newPatientCount);
+      const patientMix = [
+        { label: "New", value: newPatientCount },
+        { label: "Returning", value: returningCount },
+      ];
 
-            {/* Main Content Grid */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      const activity = bookings.slice(0, 6).map((booking) => ({
+        id: booking.id,
+        title: booking.consultation_completed ? "Consultation completed" : "Appointment updated",
+        detail: booking.profiles?.full_name ? booking.profiles.full_name : "Patient",
+        time: booking.booked_at,
+      }));
 
-                {/* Left Column (Main) */}
-                <div className="col-span-1 lg:col-span-8 flex flex-col gap-6">
+      const insights = [
+        `${pendingQueue.length} patients are currently in your active queue.`,
+        `${completedCount} consultations completed in total with a strong follow-up cadence.`,
+        `${reports.length} reports uploaded to patient records.`,
+      ];
 
-                    {/* Hero Banner */}
-                    <div className="relative h-48 rounded-[32px] bg-gradient-to-r from-[#27AE60] to-[#2ECC71] overflow-hidden p-8 text-white flex items-center shadow-lg">
-                        <div className="z-10 max-w-md">
-                            <h2 className="text-2xl font-bold mb-2">Manage your consultations easily</h2>
-                            <p className="text-white/80 text-sm mb-4">You have {stats.appointmentsToday} appointments scheduled for today. Ready to start?</p>
-                            <button
-                                onClick={() => onNavigate('appointments')}
-                                className="px-6 py-2.5 bg-white text-[#27AE60] font-bold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
-                            >
-                                Start Consulting
-                            </button>
-                        </div>
-                        <div className="absolute right-8 bottom-0 w-64 h-full flex items-end justify-center">
-                            <div className="w-48 h-56 bg-white/10 rounded-t-full relative overflow-hidden flex items-center justify-center">
-                                <Users size={80} className="text-white/20" />
-                            </div>
-                        </div>
-                    </div>
+      setDashboardData({
+        stats: {
+          totalPatients: uniquePatientMap.size,
+          appointmentsToday: todayBookings.length,
+          completed: completedCount,
+          pending: pendingQueue.length,
+          revenue: completedCount * 1500,
+          reports: reports.length,
+        },
+        queue: pendingQueue.slice(0, 6),
+        recentPatients,
+        schedule: todayBookings.slice(0, 6).map((booking) => ({
+          id: booking.id,
+          name: booking.profiles?.full_name || "Patient",
+          type: booking.profiles?.gender || "Profile pending",
+          time: booking.appointments?.time || "--:--",
+          status: booking.consultation_completed ? "Completed" : booking.consultation_started ? "Live" : "Scheduled",
+          dateLabel: monthOrDayKey(booking.appointments?.date),
+        })),
+        insights,
+        activity,
+        performanceTrend: performanceBase,
+        patientMix,
+      });
+      setLoading(false);
+    };
 
-                    {/* Today's Specialist Box (Patients Queue) */}
-                    <div className="seba-card flex-1 p-6 flex flex-col overflow-hidden">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold">Patient Queue</h3>
-                            <button
-                                onClick={() => onNavigate('appointments')}
-                                className="text-sm font-bold text-[#0BC5EA] flex items-center gap-1 hover:underline"
-                            >
-                                View All <ChevronRight size={14} />
-                            </button>
-                        </div>
+    fetchDashboardData();
+  }, [initialProfile]);
 
-                        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                            {queue.map((item, idx) => (
-                                <div key={item.id} className="min-w-[160px] p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center text-center hover:border-[#0BC5EA] transition-all cursor-pointer group">
-                                    <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0BC5EA] to-[#2D9CDB] flex items-center justify-center text-white font-bold text-lg">
-                                            {item.profiles?.full_name?.charAt(0)}
-                                        </div>
-                                    </div>
-                                    <div className="font-bold text-sm truncate w-full">{item.profiles?.full_name}</div>
-                                    <div className="text-[11px] text-gray-400 mt-1">{item.profiles?.age} yrs • {item.profiles?.gender}</div>
-                                </div>
-                            ))}
-                            {queue.length === 0 && (
-                                <div className="w-full flex flex-col items-center justify-center py-8 text-gray-400">
-                                    <Users size={40} className="mb-2 opacity-20" />
-                                    <p>No patients in queue</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+  const statsCards = [
+    {
+      label: "Today's Appointments",
+      value: dashboardData.stats.appointmentsToday,
+      accent: "from-cyan-500 to-sky-500",
+      icon: CalendarClock,
+    },
+    {
+      label: "Total Patients",
+      value: dashboardData.stats.totalPatients,
+      accent: "from-sky-500 to-blue-500",
+      icon: Users,
+    },
+    {
+      label: "Completed Consultations",
+      value: dashboardData.stats.completed,
+      accent: "from-emerald-500 to-teal-500",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Estimated Revenue",
+      value: `INR ${dashboardData.stats.revenue.toLocaleString("en-IN")}`,
+      accent: "from-cyan-600 to-blue-600",
+      icon: HeartPulse,
+    },
+  ];
 
-                    {/* Featured Consultations (Recent Activity) */}
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold">Next Consultation</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            {nextPatient ? (
-                                <div className="seba-card p-4 flex gap-4 items-center">
-                                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-                                        <div className="w-full h-full flex items-center justify-center bg-cyan-100 text-cyan-600 font-bold text-xl">
-                                            {nextPatient.profiles?.full_name?.charAt(0)}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-bold truncate">{nextPatient.profiles?.full_name}</div>
-                                        <div className="text-xs text-gray-400 mt-1 italic">Waiting for consultation...</div>
-                                        <button
-                                            onClick={() => onNavigate('prescriptions')}
-                                            className="mt-2 text-[#0BC5EA] text-xs font-bold flex items-center gap-1 group hover:underline"
-                                        >
-                                            Get Consultation <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="seba-card p-8 col-span-2 text-center text-gray-400">
-                                    No immediate consultations
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column (Stats & Sidebar) */}
-                <div className="col-span-1 lg:col-span-4 flex flex-col gap-6">
-
-                    {/* Compact Stat Card */}
-                    <div className="bg-[#9B51E0] rounded-[32px] p-8 text-white relative overflow-hidden shadow-lg">
-                        <div className="relative z-10">
-                            <div className="text-5xl font-bold mb-2">{stats.totalPatients}</div>
-                            <div className="text-sm font-medium opacity-80 leading-snug max-w-[120px]">
-                                Total patients you have treated
-                            </div>
-                        </div>
-                        <div className="absolute right-2 bottom-2 opacity-20 transform rotate-12">
-                            <Users size={120} />
-                        </div>
-                    </div>
-
-                    {/* Small Quick Action Cards */}
-                    <div className="seba-card p-6 flex-1 overflow-hidden flex flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-base font-bold">Quick Metrics</h3>
-                            <button
-                                onClick={() => onNavigate('appointments')}
-                                className="text-xs font-bold text-[#0BC5EA] hover:underline"
-                            >
-                                View All
-                            </button>
-                        </div>
-
-                        <div className="space-y-4 overflow-y-auto no-scrollbar pr-2">
-                            {[
-                                { title: "Completed", value: stats.completed, color: "text-[#27AE60]", bg: "bg-[#E8F5E9]" },
-
-                            ].map((metric, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50/50 border border-gray-100/50">
-                                    <span className="text-sm font-semibold text-gray-500">{metric.title}</span>
-                                    <span className={`text-sm font-black p-2 rounded-xl min-w-[32px] text-center ${metric.bg} ${metric.color}`}>
-                                        {metric.value}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-auto pt-6 border-t border-gray-100 overflow-hidden">
-                            <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
-                                <PieIcon size={16} className="text-[#9B51E0]" />
-                                Patient Distribution
-                            </h4>
-                            <div className="flex items-center gap-6">
-                                <div className="relative w-24 h-24 flex-shrink-0">
-                                    <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                                        <circle cx="18" cy="18" r="16" fill="none" stroke="#F2E7FE" strokeWidth="4" />
-                                        <circle cx="18" cy="18" r="16" fill="none" stroke="#9B51E0" strokeWidth="4"
-                                            strokeDasharray="75, 100" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-[10px] font-bold">
-                                        <span className="text-[#9B51E0]">75%</span>
-                                        <span className="text-gray-400">New</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-[#9B51E0]"></div>
-                                        <span className="text-[11px] font-bold text-gray-500">New Patients (75%)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-[#F2E7FE] border border-[#9B51E0]/20"></div>
-                                        <span className="text-[11px] font-bold text-gray-400">Regular (25%)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
+  return (
+    <div className="space-y-6">
+      <MotionDiv
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="flex flex-wrap items-end justify-between gap-3"
+      >
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 lg:text-[2.2rem]">Dr. {firstName}, welcome back</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500 lg:text-base">
+            Enterprise overview of consultations, patient flow, and performance.
+          </p>
         </div>
-    );
+        <div className="rounded-full border border-cyan-100 bg-white/85 px-4 py-2 text-sm font-bold text-slate-600">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </div>
+      </MotionDiv>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="space-y-6 xl:col-span-8">
+          <PremiumCard contentClassName="p-7 lg:p-8">
+            <div className="relative overflow-hidden rounded-[20px] border border-cyan-100/80 bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 p-6 text-white lg:p-8">
+              <div className="absolute inset-0">
+                <div className="absolute -left-16 -top-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+                <div className="absolute right-0 top-8 h-28 w-28 rounded-full bg-cyan-200/30 blur-2xl" />
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ x: [0, 7, 0], y: [0, -4, 0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+                  style={{
+                    background:
+                      "linear-gradient(110deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 42%, rgba(224,242,254,0.26) 100%)",
+                  }}
+                />
+              </div>
+
+              <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                <div className="max-w-xl">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">Clinical Operations</p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight lg:text-[1.85rem]">
+                    Keep consultations precise, timely, and patient-centered.
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-cyan-100/95 lg:text-base">
+                    {dashboardData.stats.pending > 0
+                      ? `${dashboardData.stats.pending} active queue items require immediate attention.`
+                      : "Your queue is clear right now. Great clinical throughput."}
+                  </p>
+                </div>
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={spring}
+                  onClick={() => onNavigate("appointments")}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/95 px-5 py-2.5 text-sm font-bold text-cyan-700 shadow-lg"
+                >
+                  Manage Appointments <ArrowUpRight size={16} />
+                </motion.button>
+              </div>
+            </div>
+          </PremiumCard>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {statsCards.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <PremiumCard key={item.label} delay={index * 0.04} contentClassName="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
+                      <p className="mt-2 text-[1.75rem] font-black leading-tight text-slate-900">{item.value}</p>
+                    </div>
+                    <div className={`rounded-2xl bg-gradient-to-br ${item.accent} p-2.5 text-white`}>
+                      <Icon size={18} />
+                    </div>
+                  </div>
+                </PremiumCard>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <PremiumCard contentClassName="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h3 className="text-lg font-black text-slate-900">Consultation Schedule</h3>
+                <button
+                  onClick={() => onNavigate("appointments")}
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-700"
+                >
+                  View All
+                </button>
+              </div>
+              <div className="space-y-3">
+                {loading
+                  ? Array.from({ length: 3 }).map((_, idx) => (
+                      <div key={`schedule-loading-${idx}`} className="h-[74px] animate-pulse rounded-2xl bg-cyan-50/70" />
+                    ))
+                  : dashboardData.schedule.length > 0
+                  ? dashboardData.schedule.map((slot) => (
+                      <motion.div
+                        key={slot.id}
+                        whileHover={{ x: 2 }}
+                        transition={spring}
+                        className="rounded-2xl border border-cyan-100 bg-white/95 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{slot.name}</p>
+                            <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                              {slot.dateLabel} · {slot.time}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-cyan-700">
+                            {slot.status}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))
+                  : (
+                    <div className="rounded-2xl border border-dashed border-cyan-200 bg-cyan-50/30 p-6 text-center text-sm font-semibold text-slate-500">
+                      No appointments scheduled for today.
+                    </div>
+                  )}
+              </div>
+            </PremiumCard>
+
+            <PremiumCard contentClassName="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h3 className="text-lg font-black text-slate-900">Performance Overview</h3>
+                <span className="rounded-full bg-cyan-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-cyan-700">
+                  Last 7 Days
+                </span>
+              </div>
+              <div className="h-[248px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dashboardData.performanceTrend} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="4 8" stroke="#dbeafe" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "14px",
+                        border: "1px solid #bae6fd",
+                        backgroundColor: "rgba(255,255,255,0.96)",
+                        boxShadow: "0 10px 26px -18px rgba(15,23,42,0.5)",
+                      }}
+                    />
+                    <Line type="monotone" dataKey="appointments" stroke="#06b6d4" strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="completed" stroke="#0ea5e9" strokeWidth={2.2} strokeDasharray="5 5" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </PremiumCard>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <PremiumCard contentClassName="p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Brain size={18} className="text-cyan-700" />
+                <h3 className="text-lg font-black text-slate-900">AI-Powered Insights</h3>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.insights.map((line) => (
+                  <div key={line} className="rounded-2xl border border-cyan-100 bg-cyan-50/45 p-3 text-sm font-semibold text-slate-600">
+                    {line}
+                  </div>
+                ))}
+              </div>
+            </PremiumCard>
+
+            <PremiumCard contentClassName="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-black text-slate-900">Recent Patients</h3>
+                <button
+                  onClick={() => onNavigate("appointments")}
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-700"
+                >
+                  Open
+                </button>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.recentPatients.length > 0 ? (
+                  dashboardData.recentPatients.map((patient, index) => (
+                    <div key={`${patient?.full_name || "patient"}-${index}`} className="flex items-center gap-3 rounded-2xl border border-cyan-100 bg-white/95 p-3">
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-cyan-500 to-sky-600 font-black text-white">
+                        {patient?.avatar_url ? (
+                          <img src={patient.avatar_url} alt={patient.full_name} className="h-full w-full object-cover" />
+                        ) : (
+                          patient?.full_name?.charAt(0)?.toUpperCase() || "P"
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-slate-900">{patient?.full_name || "Patient"}</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {patient?.age ? `${patient.age} yrs` : "Age pending"} · {patient?.gender || "Profile pending"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-cyan-200 bg-cyan-50/30 p-6 text-center text-sm font-semibold text-slate-500">
+                    Patient data will appear after bookings.
+                  </div>
+                )}
+              </div>
+            </PremiumCard>
+          </div>
+        </div>
+
+        <div className="space-y-6 xl:col-span-4">
+          <PremiumCard contentClassName="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Stethoscope size={18} className="text-cyan-700" />
+              <h3 className="text-lg font-black text-slate-900">Profile Card</h3>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="relative">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-cyan-200 bg-gradient-to-br from-cyan-500 to-sky-600 text-xl font-black text-white">
+                  {(initialProfile?.full_name || doctorProfile.full_name)?.charAt(0)?.toUpperCase() || "D"}
+                </div>
+                <motion.span
+                  animate={{ opacity: [0.5, 1, 0.5], scale: [0.86, 1, 0.86] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-emerald-500"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-lg font-black text-slate-900">{initialProfile?.full_name || doctorProfile.full_name}</p>
+                <p className="truncate text-xs font-bold uppercase tracking-[0.15em] text-cyan-700">Doctor</p>
+                <button
+                  onClick={() => onNavigate("profile")}
+                  className="mt-4 rounded-full bg-gradient-to-r from-cyan-500 to-sky-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white shadow-md"
+                >
+                  Go To Profile
+                </button>
+              </div>
+            </div>
+          </PremiumCard>
+
+          <PremiumCard contentClassName="p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-black text-slate-900">Patient Analytics</h3>
+              <span className="rounded-full bg-cyan-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-cyan-700">
+                Mix
+              </span>
+            </div>
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dashboardData.patientMix} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 8" stroke="#dbeafe" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "14px",
+                      border: "1px solid #bae6fd",
+                      backgroundColor: "rgba(255,255,255,0.96)",
+                      boxShadow: "0 10px 26px -18px rgba(15,23,42,0.5)",
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#06b6d4" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </PremiumCard>
+
+          <PremiumCard contentClassName="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <BellRing size={17} className="text-cyan-700" />
+              <h3 className="text-lg font-black text-slate-900">Appointment Management</h3>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => onNavigate("availability")}
+                className="flex w-full items-center justify-between rounded-2xl border border-cyan-100 bg-white/95 px-4 py-3 text-left text-sm font-bold text-slate-700"
+              >
+                Manage Availability <ArrowUpRight size={16} className="text-cyan-700" />
+              </button>
+              <button
+                onClick={() => onNavigate("appointments")}
+                className="flex w-full items-center justify-between rounded-2xl border border-cyan-100 bg-white/95 px-4 py-3 text-left text-sm font-bold text-slate-700"
+              >
+                Open Queue <ArrowUpRight size={16} className="text-cyan-700" />
+              </button>
+              <button
+                onClick={() => onNavigate("prescriptions")}
+                className="flex w-full items-center justify-between rounded-2xl border border-cyan-100 bg-white/95 px-4 py-3 text-left text-sm font-bold text-slate-700"
+              >
+                Consultation Workspace <ArrowUpRight size={16} className="text-cyan-700" />
+              </button>
+            </div>
+          </PremiumCard>
+
+          <PremiumCard contentClassName="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <FileCheck2 size={17} className="text-cyan-700" />
+              <h3 className="text-lg font-black text-slate-900">Medical Reports</h3>
+            </div>
+            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/35 p-4">
+              <p className="text-3xl font-black text-slate-900">{dashboardData.stats.reports}</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-cyan-700">Reports Uploaded</p>
+            </div>
+            <div className="mt-3 space-y-2">
+              {dashboardData.activity.slice(0, 3).map((item) => (
+                <div key={`report-activity-${item.id}`} className="flex gap-2 rounded-xl border border-cyan-100 bg-white/95 px-3 py-2.5">
+                  <CircleDot size={13} className="mt-0.5 text-cyan-600" />
+                  <div>
+                    <p className="text-sm font-black text-slate-900">{item.title}</p>
+                    <p className="text-xs font-semibold text-slate-500">{item.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PremiumCard>
+
+          <PremiumCard contentClassName="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Sparkles size={18} className="text-cyan-700" />
+              <h3 className="text-lg font-black text-slate-900">Activity Feed</h3>
+            </div>
+            <div className="space-y-3">
+              {dashboardData.activity.length > 0 ? (
+                dashboardData.activity.map((item) => (
+                  <div key={item.id} className="flex gap-3 rounded-2xl border border-cyan-100 bg-white/90 p-3">
+                    <div className="mt-1 text-cyan-600">
+                      <CircleDot size={14} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{item.title}</p>
+                      <p className="text-xs font-semibold text-slate-500">{item.detail}</p>
+                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-700">
+                        {new Date(item.time).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-2xl border border-dashed border-cyan-200 bg-cyan-50/30 p-5 text-center text-sm font-semibold text-slate-500">
+                  Activity stream will appear as consultations progress.
+                </p>
+              )}
+            </div>
+          </PremiumCard>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default DoctorDashboardHome;

@@ -1,161 +1,257 @@
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "../supabaseClient";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
+import { supabase } from "../supabaseClient";
+import NotificationDropdown from "./notifications/NotificationDropdown";
+const MotionButton = motion.button;
+const MotionSpan = motion.span;
+
+const sortByDateDesc = (items) =>
+  [...items].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
 const NotificationBell = () => {
-    const [notifications, setNotifications] = useState([]);
-    const [open, setOpen] = useState(false);
-    const dropdownRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState({ top: 68, left: 16, width: 392 });
+  const [deletingIds, setDeletingIds] = useState(new Set());
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [undoState, setUndoState] = useState({ open: false, items: [], label: "" });
 
-    const fetchNotifications = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+  const pendingDeletionRef = useRef(null);
+  const isMountedRef = useRef(true);
 
-        const { data } = await supabase
-            .from("notifications")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(20);
+  const unreadCount = notifications.filter((item) => !item.read).length;
 
-        setNotifications(data || []);
+  async function fetchNotifications() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (isMountedRef.current) {
+      setNotifications(data || []);
+    }
+  }
+
+  async function finalizeDeletion(items) {
+    const ids = items.map((item) => item.id).filter(Boolean);
+    if (ids.length === 0) return;
+    await supabase.from("notifications").delete().in("id", ids);
+  }
+
+  function clearPendingDeletion(commit = false) {
+    if (!pendingDeletionRef.current) return;
+    clearTimeout(pendingDeletionRef.current.timer);
+    const pending = pendingDeletionRef.current.items || [];
+    pendingDeletionRef.current = null;
+    if (commit && pending.length > 0) {
+      finalizeDeletion(pending);
+    }
+  }
+
+  function queueDeletion(items, label) {
+    clearPendingDeletion(true);
+    setUndoState({ open: true, items, label });
+
+    const timer = setTimeout(async () => {
+      await finalizeDeletion(items);
+      if (!isMountedRef.current) return;
+      setUndoState((current) => (current.items === items ? { open: false, items: [], label: "" } : current));
+      pendingDeletionRef.current = null;
+    }, 4200);
+
+    pendingDeletionRef.current = { items, timer };
+  }
+
+  function updatePanelPosition() {
+    if (!triggerRef.current) return;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const isDesktop = viewportWidth >= 1024;
+    const minMargin = isDesktop ? 20 : 12;
+    const width = Math.min(392, viewportWidth - minMargin * 2);
+    const desktopLeftNudge = isDesktop ? 18 : 10;
+    const preferredLeft = rect.right - width - desktopLeftNudge;
+    const left = Math.max(minMargin, Math.min(preferredLeft, viewportWidth - width - minMargin));
+    const top = rect.bottom + (isDesktop ? 14 : 10);
+
+    setPanelStyle({ top, left, width });
+  }
+
+  async function markAllRead() {
+    const unreadIds = notifications.filter((item) => !item.read).map((item) => item.id);
+    if (unreadIds.length === 0) return;
+
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    await supabase.from("notifications").update({ read: true }).in("id", unreadIds);
+  }
+
+  async function markOneRead(id) {
+    const target = notifications.find((item) => item.id === id);
+    if (!target || target.read) return;
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
+  }
+
+  function handleDelete(notification) {
+    setDeletingIds((prev) => new Set([...prev, notification.id]));
+    setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+    queueDeletion([notification], "Notification removed");
+
+    setTimeout(() => {
+      if (!isMountedRef.current) return;
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notification.id);
+        return next;
+      });
+    }, 240);
+  }
+
+  function handleClearAll() {
+    if (notifications.length === 0) return;
+    const items = [...notifications];
+    setDeletingAll(true);
+    setNotifications([]);
+    queueDeletion(items, `${items.length} notifications removed`);
+    setTimeout(() => {
+      if (isMountedRef.current) setDeletingAll(false);
+    }, 180);
+  }
+
+  function handleUndo() {
+    if (!pendingDeletionRef.current) return;
+    clearTimeout(pendingDeletionRef.current.timer);
+    const items = pendingDeletionRef.current.items || [];
+    pendingDeletionRef.current = null;
+
+    setNotifications((prev) => sortByDateDesc([...items, ...prev]));
+    setUndoState({ open: false, items: [], label: "" });
+  }
+
+  function closePanel() {
+    setOpen(false);
+  }
+
+  function togglePanel() {
+    setOpen((current) => {
+      const next = !current;
+      if (next) {
+        fetchNotifications();
+        updatePanelPosition();
+      }
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pendingDeletionRef.current) {
+        clearTimeout(pendingDeletionRef.current.timer);
+        const pending = pendingDeletionRef.current.items || [];
+        pendingDeletionRef.current = null;
+        if (pending.length > 0) {
+          const ids = pending.map((item) => item.id).filter(Boolean);
+          if (ids.length > 0) {
+            supabase.from("notifications").delete().in("id", ids);
+          }
+        }
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closePanel();
     };
 
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handler = (e) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
-    }, []);
-
-    useEffect(() => { fetchNotifications(); }, []);
-
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const markAllRead = async () => {
-        const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-        if (unreadIds.length === 0) return;
-
-        await supabase
-            .from("notifications")
-            .update({ read: true })
-            .in("id", unreadIds);
-
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      const clickedPanel = panelRef.current?.contains(target);
+      const clickedTrigger = triggerRef.current?.contains(target);
+      if (!clickedPanel && !clickedTrigger) closePanel();
     };
 
-    const markOneRead = async (id) => {
-        await supabase.from("notifications").update({ read: true }).eq("id", id);
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    };
+    const onViewportChange = () => updatePanelPosition();
 
-    return (
-        <div ref={dropdownRef} style={{ position: "relative", display: "inline-block" }}>
-            {/* Bell Button */}
-            <button
-                onClick={() => { setOpen(o => !o); if (!open) fetchNotifications(); }}
-                style={{
-                    position: "relative", background: "none", border: "1px solid #E2E8F0",
-                    borderRadius: 10, padding: "8px 10px", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#4A5568", transition: "background 0.15s",
-                }}
-                title="Notifications"
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <MotionButton
+        ref={triggerRef}
+        onClick={togglePanel}
+        whileTap={{ scale: 0.96 }}
+        className="group relative flex items-center justify-center rounded-xl border border-cyan-100 bg-white/92 p-2.5 text-slate-600 shadow-sm transition hover:border-cyan-200 hover:text-cyan-700"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label="Open notifications"
+      >
+        <MotionSpan
+          animate={open ? { rotate: [0, -12, 8, 0] } : {}}
+          transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          className="relative"
+        >
+          <Bell size={18} />
+        </MotionSpan>
+
+        <AnimatePresence>
+          {unreadCount > 0 && (
+            <MotionSpan
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full border border-white bg-gradient-to-r from-cyan-500 to-sky-500 px-1 text-[10px] font-black text-white shadow-md"
             >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                    <span style={{
-                        position: "absolute", top: -6, right: -6,
-                        background: "#E53E3E", color: "#fff",
-                        fontSize: 10, fontWeight: 700,
-                        minWidth: 18, height: 18, borderRadius: 9,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        padding: "0 4px", lineHeight: 1,
-                    }}>
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                )}
-            </button>
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </MotionSpan>
+          )}
+        </AnimatePresence>
+      </MotionButton>
 
-            {/* Dropdown */}
-            {open && (
-                <div style={{
-                    position: "fixed",
-                    top: dropdownRef.current
-                        ? dropdownRef.current.getBoundingClientRect().bottom + 8
-                        : 60,
-                    left: dropdownRef.current
-                        ? Math.min(
-                            dropdownRef.current.getBoundingClientRect().left,
-                            window.innerWidth - 330
-                        )
-                        : 16,
-                    width: 320, background: "#fff", borderRadius: 14,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.14)", border: "1px solid #E2E8F0",
-                    zIndex: 99999, overflow: "hidden",
-                }}>
-                    {/* Header */}
-                    <div style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "14px 16px", borderBottom: "1px solid #EDF2F7",
-                    }}>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: "#1A202C" }}>
-                            Notifications {unreadCount > 0 && `(${unreadCount} new)`}
-                        </span>
-                        {unreadCount > 0 && (
-                            <button
-                                onClick={markAllRead}
-                                style={{ fontSize: 12, color: "#0BC5EA", border: "none", background: "none", cursor: "pointer", fontWeight: 600 }}
-                            >
-                                Mark all read
-                            </button>
-                        )}
-                    </div>
-
-                    {/* List */}
-                    <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                        {notifications.length === 0 ? (
-                            <div style={{ padding: "24px 16px", textAlign: "center", color: "#A0AEC0", fontSize: 13 }}>
-                                No notifications yet.
-                            </div>
-                        ) : (
-                            notifications.map(n => (
-                                <div
-                                    key={n.id}
-                                    onClick={() => markOneRead(n.id)}
-                                    style={{
-                                        padding: "12px 16px",
-                                        background: n.read ? "#fff" : "#EBF8FF",
-                                        borderBottom: "1px solid #F7FAFC",
-                                        cursor: "pointer",
-                                        transition: "background 0.15s",
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                                        <span style={{ fontWeight: 600, fontSize: 13, color: "#1A202C" }}>{n.title}</span>
-                                        {!n.read && (
-                                            <span style={{
-                                                width: 8, height: 8, borderRadius: "50%",
-                                                background: "#0BC5EA", flexShrink: 0, marginLeft: 8,
-                                            }} />
-                                        )}
-                                    </div>
-                                    <p style={{ fontSize: 12, color: "#4A5568", margin: 0, lineHeight: 1.5 }}>{n.message}</p>
-                                    <p style={{ fontSize: 11, color: "#A0AEC0", margin: "4px 0 0" }}>
-                                        {new Date(n.created_at).toLocaleString()}
-                                    </p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+      <NotificationDropdown
+        open={open}
+        panelRef={panelRef}
+        panelStyle={panelStyle}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        deletingIds={deletingIds}
+        deletingAll={deletingAll}
+        undoState={undoState}
+        onMarkRead={markOneRead}
+        onDelete={handleDelete}
+        onClearAll={handleClearAll}
+        onUndo={handleUndo}
+        onMarkAllRead={markAllRead}
+      />
+    </>
+  );
 };
 
 export default NotificationBell;
