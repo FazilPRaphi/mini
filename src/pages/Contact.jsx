@@ -269,7 +269,7 @@ export default function Contact() {
                       </div>
                       <div>
                         <h4 className="text-[14px] font-bold text-slate-900">Active Consultations</h4>
-                        <p className="text-[13px] text-slate-500">1,248 currently live</p>
+                        <p className="text-[13px] text-slate-500">48 currently live</p>
                       </div>
                     </div>
                   </div>

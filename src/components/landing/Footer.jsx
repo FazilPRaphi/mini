@@ -11,17 +11,17 @@ const footerLinks = {
     { name: "Medical Records", path: "/login" },
   ],
   "For Doctors": [
-    { name: "Join HealthSync", path: "/login" },
+    { name: "Join HealthSync", path: "/register" },
     { name: "Doctor Dashboard", path: "/login" },
-    { name: "Resources", path: "/login" },
+    { name: "Resources", path: "/about" },
     { name: "Practitioner App", path: "/login" },
   ],
   Company: [
     { name: "About Us", path: "/about" },
     { name: "Careers", path: "/contact" },
-    { name: "Blog", path: "/contact" },
+    
     { name: "Contact", path: "/contact" },
-    { name: "Press", path: "/login" },
+    
   ],
 };
 
