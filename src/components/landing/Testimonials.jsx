@@ -2,24 +2,17 @@ import React from "react";
 
 const testimonials = [
   {
-    quote: "HealthSync completely transformed how I manage my family's healthcare. The video consultations are seamless, and the doctor I saw was incredibly thorough.",
+    quote: "Booking appointments became much easier for me, and I can quickly find the right specialist.",
     name: "Anita Sharma",
     role: "Mother of two",
     avatar: "https://i.pravatar.cc/100?img=32",
     rating: 5,
   },
   {
-    quote: "As someone with a chronic condition, having 24/7 access to my medical records and being able to message my doctor directly has been life-changing.",
+    quote: "I like having my reports and follow-ups in one place. It saves me time every month.",
     name: "Marcus Thompson",
     role: "Software Engineer",
     avatar: "https://i.pravatar.cc/100?img=11",
-    rating: 5,
-  },
-  {
-    quote: "The booking process is so fast. I went from searching for a dermatologist to having a confirmed appointment in under two minutes. Truly impressive.",
-    name: "Fatima Al-Rashid",
-    role: "Marketing Director",
-    avatar: "https://i.pravatar.cc/100?img=26",
     rating: 5,
   },
 ];
@@ -36,13 +29,13 @@ export default function Testimonials() {
             <span className="text-[12px] font-semibold text-amber-600 uppercase tracking-wider">Testimonials</span>
           </div>
           <h2 className="text-[28px] sm:text-[40px] lg:text-[48px] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.1]">
-            Loved by{" "}
-            <span className="gradient-text-brand">thousands</span>
+            Trusted by a{" "}
+            <span className="gradient-text-brand">growing community</span>
           </h2>
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto">
           {testimonials.map((t, i) => (
             <div key={i} className="group relative bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-white/60 shadow-sm hover:shadow-premium-lg transition-all duration-500">
               {/* Quote mark */}

@@ -21,7 +21,7 @@ export default function CTASection() {
         </h2>
 
         <p className="mt-5 sm:mt-6 text-[15px] sm:text-[18px] text-slate-400 leading-relaxed font-medium max-w-2xl mx-auto">
-          Join 50,000+ patients and 2,500+ specialists already using HealthSync. Your first consultation is free.
+          Join 500+ patients and 100+ specialists already using HealthSync. Your first consultation is free.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 sm:mt-10">

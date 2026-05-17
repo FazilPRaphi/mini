@@ -41,7 +41,7 @@ export default function Footer() {
               </span>
             </button>
             <p className="text-[14px] text-slate-400 leading-relaxed font-medium max-w-xs mb-5">
-              Making healthcare accessible, efficient, and human. Trusted by thousands worldwide.
+              Making healthcare accessible, efficient, and human for a growing patient community.
             </p>
             <div className="flex items-center gap-3">
               <a

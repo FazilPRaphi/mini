@@ -20,7 +20,7 @@ export default function HeroSection() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-50 border border-cyan-100 mb-6 sm:mb-8">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[13px] font-semibold text-cyan-700 tracking-wide">Trusted by 50,000+ patients</span>
+              <span className="text-[13px] font-semibold text-cyan-700 tracking-wide">Trusted by 500+ patients</span>
             </div>
 
             <h1 className="text-[36px] sm:text-[48px] lg:text-[58px] xl:text-[64px] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -53,29 +53,6 @@ export default function HeroSection() {
               </button>
             </div>
 
-            {/* Social Proof */}
-            <div className="flex items-center gap-4 mt-8 sm:mt-10 justify-center lg:justify-start">
-              <div className="flex -space-x-2.5">
-                {[
-                  "https://i.pravatar.cc/100?img=1",
-                  "https://i.pravatar.cc/100?img=5",
-                  "https://i.pravatar.cc/100?img=8",
-                  "https://i.pravatar.cc/100?img=12"
-                ].map((src, i) => (
-                  <img key={i} src={src} className="w-9 h-9 rounded-full border-[2.5px] border-white shadow-sm object-cover" alt="" />
-                ))}
-              </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-3.5 h-3.5 text-amber-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-[12px] text-slate-400 font-medium mt-0.5">4.9/5 from 2,400+ reviews</p>
-              </div>
-            </div>
           </div>
 
           {/* Right - Visual */}

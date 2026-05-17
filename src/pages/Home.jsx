@@ -1,17 +1,14 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import LandingNavbar from "../components/landing/LandingNavbar";
 import HeroSection from "../components/landing/HeroSection";
 import TrustMetrics from "../components/landing/TrustMetrics";
 import FeaturesSection from "../components/landing/FeaturesSection";
 import HowItWorks from "../components/landing/HowItWorks";
-import DoctorShowcase from "../components/landing/DoctorShowcase";
 import Testimonials from "../components/landing/Testimonials";
 import CTASection from "../components/landing/CTASection";
 import Footer from "../components/landing/Footer";
 
 export default function Home() {
-  const sectionsRef = useRef([]);
-
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -46,10 +43,6 @@ export default function Home() {
 
       <div className="reveal-section">
         <HowItWorks />
-      </div>
-
-      <div className="reveal-section">
-        <DoctorShowcase />
       </div>
 
       <div className="reveal-section">
